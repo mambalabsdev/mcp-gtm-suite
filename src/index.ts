@@ -96,10 +96,20 @@ const server = new McpServer({
 });
 
 // 1. GTM Hiring Signal Scraper
-server.tool(
+server.registerTool(
   "scan_gtm_hiring_signals",
-  "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row.",
   {
+    title: "Scan GTM Hiring Signals",
+    description:
+      "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Scan GTM Hiring Signals",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     domain: z.string().describe("Bare company domain, e.g. stripe.com"),
     role_filter: z
       .array(z.string())
@@ -110,6 +120,7 @@ server.tool(
       .optional()
       .describe("Optional ATS board slug override when it differs from the domain."),
   },
+  },
   async ({ domain, role_filter, ats_slug }) =>
     runActor(
       "mambalabs~gtm-hiring-signal-scraper",
@@ -119,15 +130,26 @@ server.tool(
 );
 
 // 2. GTM Tech Stack Signal Enrichment
-server.tool(
+server.registerTool(
   "detect_gtm_tech_stack",
-  "Detect which GTM tools a company uses from its public website. Returns CRM, sequencer, and marketing automation signals with per-tool boolean flags as a flat, Clay-ready JSON row.",
   {
+    title: "Detect GTM Tech Stack",
+    description:
+      "Detect which GTM tools a company uses from its public website. Returns CRM, sequencer, and marketing automation signals with per-tool boolean flags as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Detect GTM Tech Stack",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     domain: z.string().describe("Bare company domain, e.g. stripe.com"),
     crawl_additional_pages: z
       .boolean()
       .optional()
       .describe("Crawl up to 2 extra pages for better coverage. Defaults to true when omitted."),
+  },
   },
   async ({ domain, crawl_additional_pages }) =>
     runActor(
@@ -138,16 +160,27 @@ server.tool(
 );
 
 // 3. GTM Signals Aggregator
-server.tool(
+server.registerTool(
   "aggregate_gtm_signals",
-  "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row.",
   {
+    title: "Aggregate GTM Signals",
+    description:
+      "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Aggregate GTM Signals",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     company_domain: z.string().describe("Bare company domain, e.g. stripe.com"),
     include_summary: z.boolean().optional().describe("Include a plain-English gtm_signal_summary."),
     explain_mode: z
       .boolean()
       .optional()
       .describe("If true, the summary becomes a longer, more detailed explanation."),
+  },
   },
   async ({ company_domain, include_summary, explain_mode }) =>
     runActor(
@@ -158,10 +191,20 @@ server.tool(
 );
 
 // 4. Job Board Keyword Signal Scanner
-server.tool(
+server.registerTool(
   "scan_job_board_keywords",
-  "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row.",
   {
+    title: "Scan Job Board Keywords",
+    description:
+      "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Scan Job Board Keywords",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     company_domain: z.string().describe("Bare company domain, e.g. stripe.com"),
     role_categories: z
       .array(z.string())
@@ -179,6 +222,7 @@ server.tool(
       .optional()
       .describe("Comma-separated matched role titles from a previous run, to compute deltas."),
     previous_run_date: z.string().optional().describe("ISO date of the previous run, e.g. 2026-03-15."),
+  },
   },
   async ({
     company_domain,
@@ -203,15 +247,26 @@ server.tool(
 );
 
 // 5. Domain to LinkedIn URL Resolver
-server.tool(
+server.registerTool(
   "resolve_linkedin_url",
-  "Resolve a company domain or name to its LinkedIn company URL with a confidence score, firmographics, and social links as a flat, Clay-ready JSON row. Provide at least one of company_domain or company_name.",
   {
+    title: "Resolve LinkedIn URL",
+    description:
+      "Resolve a company domain or name to its LinkedIn company URL with a confidence score, firmographics, and social links as a flat, Clay-ready JSON row. Provide at least one of company_domain or company_name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Resolve LinkedIn URL",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     company_domain: z
       .string()
       .optional()
       .describe("Bare company domain, e.g. stripe.com. Required if company_name is not provided."),
     company_name: z.string().optional().describe("Company name. Required if company_domain is not provided."),
+  },
   },
   async ({ company_domain, company_name }) => {
     if (
@@ -232,10 +287,20 @@ server.tool(
 );
 
 // 6. ICP Fit Scorer (single-company scoring surface)
-server.tool(
+server.registerTool(
   "score_icp_fit",
-  "Score a company against your ideal customer profile (ICP) using weighted signals. Returns a 0 to 100 icp_score, an A to D icp_tier, and a per-signal breakdown as a flat, Clay-ready JSON row. Define your ICP with a template, scoring_config, or plain-English icp_description (which requires llm_api_key).",
   {
+    title: "Score ICP Fit",
+    description:
+      "Score a company against your ideal customer profile (ICP) using weighted signals. Returns a 0 to 100 icp_score, an A to D icp_tier, and a per-signal breakdown as a flat, Clay-ready JSON row. Define your ICP with a template, scoring_config, or plain-English icp_description (which requires llm_api_key). Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Score ICP Fit",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
     company_domain: z.string().describe("The primary domain of the company to score, e.g. clay.com"),
     company_name: z.string().optional().describe("Optional display name of the company."),
     template: z.string().optional().describe("Name of a prebuilt scoring config."),
@@ -254,6 +319,7 @@ server.tool(
       .boolean()
       .optional()
       .describe("If true, adds a score_explanation string to the output."),
+  },
   },
   async (args) =>
     runActor(
