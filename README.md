@@ -8,12 +8,12 @@ One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single pa
 
 This server gives an AI client six GTM tools in one place:
 
-- `scan_gtm_hiring_signals` — detect GTM hiring activity from career pages
-- `detect_gtm_tech_stack` — detect CRM, sequencer, and marketing automation tools
-- `aggregate_gtm_signals` — combine hiring and tech-stack signals into one composite score
-- `scan_job_board_keywords` — scan job boards for roles in any category
-- `resolve_linkedin_url` — resolve a domain or name to a LinkedIn company URL
-- `score_icp_fit` — score a company against your ideal customer profile
+- `scan_gtm_hiring_signals`: detect GTM hiring activity from career pages
+- `detect_gtm_tech_stack`: detect CRM, sequencer, and marketing automation tools
+- `aggregate_gtm_signals`: combine hiring and tech-stack signals into one composite score
+- `scan_job_board_keywords`: scan job boards for roles in any category
+- `resolve_linkedin_url`: resolve a domain or name to a LinkedIn company URL
+- `score_icp_fit`: score a company against your ideal customer profile
 
 All of the work runs on Apify. This package is a thin client that routes each tool call to the right actor and hands back the result.
 
@@ -66,12 +66,12 @@ Each tool maps to one Apify actor. Inputs mirror the actor, minus deprecated and
 
 Prefer one tool at a time? Each actor also ships as its own MCP package:
 
-- [`@mambalabsdev/mcp-gtm-hiring-signal-scraper`](https://smithery.ai/server/@mambabuilt/mcp-gtm-hiring-signal-scraper)
-- [`@mambalabsdev/mcp-gtm-tech-stack-signal-scraper`](https://smithery.ai/server/@mambabuilt/mcp-gtm-tech-stack-signal-scraper)
-- [`@mambalabsdev/mcp-gtm-signals-aggregator`](https://smithery.ai/server/@mambabuilt/mcp-gtm-signals-aggregator)
-- [`@mambalabsdev/mcp-job-board-keyword-signal-scanner`](https://smithery.ai/server/@mambabuilt/mcp-job-board-keyword-signal-scanner)
-- [`@mambalabsdev/mcp-domain-to-linkedin-url-resolver`](https://smithery.ai/server/@mambabuilt/mcp-domain-to-linkedin-url-resolver)
-- [`@mambalabsdev/mcp-icp-fit-scorer`](https://smithery.ai/server/@mambabuilt/mcp-icp-fit-scorer)
+- [`@mambalabsdev/mcp-gtm-hiring-signal-scraper`](https://github.com/mambalabsdev/mcp-gtm-hiring-signal-scraper)
+- [`@mambalabsdev/mcp-gtm-tech-stack-signal-scraper`](https://github.com/mambalabsdev/mcp-gtm-tech-stack-signal-scraper)
+- [`@mambalabsdev/mcp-gtm-signals-aggregator`](https://github.com/mambalabsdev/mcp-gtm-signals-aggregator)
+- [`@mambalabsdev/mcp-job-board-keyword-signal-scanner`](https://github.com/mambalabsdev/mcp-job-board-keyword-signal-scanner)
+- [`@mambalabsdev/mcp-domain-to-linkedin-url-resolver`](https://github.com/mambalabsdev/mcp-domain-to-linkedin-url-resolver)
+- [`@mambalabsdev/mcp-icp-fit-scorer`](https://github.com/mambalabsdev/mcp-icp-fit-scorer)
 
 ## Full actor documentation
 
