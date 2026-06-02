@@ -66,12 +66,12 @@ Each tool maps to one Apify actor. Inputs mirror the actor, minus deprecated and
 
 Prefer one tool at a time? Each actor also ships as its own MCP package:
 
-- `@mambalabsdev/mcp-gtm-hiring-signal-scraper`
-- `@mambalabsdev/mcp-gtm-tech-stack-signal-scraper`
-- `@mambalabsdev/mcp-gtm-signals-aggregator`
-- `@mambalabsdev/mcp-job-board-keyword-signal-scanner`
-- `@mambalabsdev/mcp-domain-to-linkedin-url-resolver`
-- `@mambalabsdev/mcp-icp-fit-scorer`
+- [`@mambalabsdev/mcp-gtm-hiring-signal-scraper`](https://smithery.ai/server/@mambabuilt/mcp-gtm-hiring-signal-scraper)
+- [`@mambalabsdev/mcp-gtm-tech-stack-signal-scraper`](https://smithery.ai/server/@mambabuilt/mcp-gtm-tech-stack-signal-scraper)
+- [`@mambalabsdev/mcp-gtm-signals-aggregator`](https://smithery.ai/server/@mambabuilt/mcp-gtm-signals-aggregator)
+- [`@mambalabsdev/mcp-job-board-keyword-signal-scanner`](https://smithery.ai/server/@mambabuilt/mcp-job-board-keyword-signal-scanner)
+- [`@mambalabsdev/mcp-domain-to-linkedin-url-resolver`](https://smithery.ai/server/@mambabuilt/mcp-domain-to-linkedin-url-resolver)
+- [`@mambalabsdev/mcp-icp-fit-scorer`](https://smithery.ai/server/@mambabuilt/mcp-icp-fit-scorer)
 
 ## Full actor documentation
 
