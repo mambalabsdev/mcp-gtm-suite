@@ -1,6 +1,6 @@
 {
   "name": "@mambalabsdev/mcp-gtm-suite",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for the full Mamba Labs GTM Suite. Exposes all six GTM actors as tools in one server via Apify: hiring signals, tech stack, aggregator, job board scanner, LinkedIn resolver, and ICP scorer. Clay-ready output.",
   "type": "module",
   "bin": {

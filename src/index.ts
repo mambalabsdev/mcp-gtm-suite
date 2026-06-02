@@ -15,16 +15,6 @@ const pkg = JSON.parse(
 const USER_AGENT = `mambalabs-mcp ${pkg.name}@${pkg.version}`;
 
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
-if (!APIFY_TOKEN) {
-  console.error(
-    [
-      "APIFY_TOKEN is not set.",
-      "This server needs an Apify API token to run the Mamba Labs GTM Suite actors.",
-      "Create a token at https://console.apify.com/account/integrations and pass it as the APIFY_TOKEN environment variable.",
-    ].join("\n"),
-  );
-  process.exit(1);
-}
 
 type ToolResult = {
   isError?: boolean;
@@ -47,6 +37,10 @@ async function runActor(
   actorLabel: string,
   input: Record<string, unknown>,
 ): Promise<ToolResult> {
+  if (!APIFY_TOKEN) {
+    return { isError: true, content: [{ type: "text", text: "APIFY_TOKEN is not set. Create a token at https://console.apify.com/account/integrations and set it as the APIFY_TOKEN environment variable." }] };
+  }
+
   const url = `https://api.apify.com/v2/acts/${actorPath}/run-sync-get-dataset-items?timeout=300`;
 
   let response: Response;
