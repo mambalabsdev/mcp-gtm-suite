@@ -1,6 +1,6 @@
 # Mamba Labs GTM Suite MCP Server
 
-[![Smithery](https://smithery.ai/badge/mambabuilt/mcp-gtm-suite)](https://smithery.ai/servers/mambabuilt/mcp-gtm-suite)
+[![Smithery](https://smithery.ai/badge/mambabuilt/mcp-gtm-suite)](https://smithery.ai/servers/mambabuilt/mcp-gtm-suite) [![mcp-gtm-suite MCP server](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite/badges/card.svg)](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite)
 
 One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all six go-to-market tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
 
