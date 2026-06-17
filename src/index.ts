@@ -30,8 +30,10 @@ function compact(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-// Shared caller. The tilde between the org name and the actor name is Apify's
-// required separator for the org/actor path. It is not a slash.
+// Shared caller. actorPath is the actor's immutable Apify actor ID (a stable
+// 17-char key that survives Store renames). The /v2/acts/{id} endpoint accepts
+// it directly. We use IDs rather than the mambalabs~slug path so a Store rename
+// never breaks these calls.
 async function runActor(
   actorPath: string,
   actorLabel: string,
@@ -123,7 +125,7 @@ server.registerTool(
   },
   async ({ domain, role_filter, ats_slug }) =>
     runActor(
-      "mambalabs~gtm-hiring-signal-scraper",
+      "D7O1SA2EqwHGsGr1P",
       "GTM Hiring Signal Scraper",
       compact({ domain, role_filter, ats_slug }),
     ),
@@ -153,7 +155,7 @@ server.registerTool(
   },
   async ({ domain, crawl_additional_pages }) =>
     runActor(
-      "mambalabs~gtm-tech-stack-signal-scraper",
+      "qyd7nNyqFPelQViBx",
       "GTM Tech Stack Signal Enrichment",
       compact({ domain, crawl_additional_pages }),
     ),
@@ -184,7 +186,7 @@ server.registerTool(
   },
   async ({ company_domain, include_summary, explain_mode }) =>
     runActor(
-      "mambalabs~gtm-signals-aggregator",
+      "xKdRfnfFNkdMpFuNs",
       "GTM Signals Aggregator",
       compact({ company_domain, include_summary, explain_mode }),
     ),
@@ -233,7 +235,7 @@ server.registerTool(
     previous_run_date,
   }) =>
     runActor(
-      "mambalabs~job-board-keyword-signal-scanner",
+      "4DvqpvhMR74NLcDDY",
       "Job Board Keyword Signal Scanner",
       compact({
         company_domain,
@@ -279,7 +281,7 @@ server.registerTool(
       };
     }
     return runActor(
-      "mambalabs~domain-to-linkedin-url-resolver",
+      "3HtnSaqPHOg1Qg5gx",
       "Domain to LinkedIn URL Resolver",
       compact({ company_domain, company_name }),
     );
@@ -323,7 +325,7 @@ server.registerTool(
   },
   async (args) =>
     runActor(
-      "mambalabs~icp-fit-scorer",
+      "W161DT8W4kW55dMFh",
       "ICP Fit Scorer",
       compact({
         company_domain: args.company_domain,
