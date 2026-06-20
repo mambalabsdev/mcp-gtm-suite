@@ -1,6 +1,6 @@
 # Mamba Labs GTM Suite MCP Server
 
-[![Smithery](https://smithery.ai/badge/mambabuilt/mcp-gtm-suite)](https://smithery.ai/server/mambabuilt/mcp-gtm-suite) [![Glama score](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite/badges/score.svg)](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite) [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dcom.mambabuilt%252Fmcp-gtm-suite%26limit%3D1&query=%24.servers%5B0%5D._meta%5B%22io.modelcontextprotocol.registry%2Fofficial%22%5D.status&label=mcp%20registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=com.mambabuilt/mcp-gtm-suite&limit=1) [![npm version](https://img.shields.io/npm/v/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/~mambalabsdev) [![npm downloads](https://img.shields.io/npm/dm/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/~mambalabsdev) [![license](https://img.shields.io/github/license/mambalabsdev/mcp-gtm-suite)](https://github.com/mambalabsdev) [![mcpservers.org](https://img.shields.io/badge/mcpservers.org-listed-blue)](https://mcpservers.org/servers/mambalabsdev/mcp-gtm-suite)
+[![Smithery](https://smithery.ai/badge/@mambabuilt/mcp-gtm-suite)](https://smithery.ai/server/@mambabuilt/mcp-gtm-suite) [![Glama score](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite/badges/score.svg)](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite) [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dcom.mambabuilt%252Fmcp-gtm-suite%26limit%3D1&query=%24.servers%5B0%5D._meta%5B%22io.modelcontextprotocol.registry%2Fofficial%22%5D.status&label=mcp%20registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=com.mambabuilt/mcp-gtm-suite&limit=1) [![npm version](https://img.shields.io/npm/v/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![npm downloads](https://img.shields.io/npm/dm/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![license](https://img.shields.io/github/license/mambalabsdev/mcp-gtm-suite)](https://github.com/mambalabsdev/mcp-gtm-suite/blob/main/LICENSE) [![mcpservers.org](https://img.shields.io/badge/mcpservers.org-listed-blue)](https://mcpservers.org/servers/mambalabsdev/mcp-gtm-suite)
 
 One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all six go-to-market tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
 
@@ -62,22 +62,30 @@ Each tool maps to one Apify actor. Inputs mirror the actor, minus deprecated and
 - `resolve_linkedin_url`: `company_domain` or `company_name` (at least one)
 - `score_icp_fit`: `company_domain` (required), plus `template`, `scoring_config`, `icp_description` (+ `llm_api_key`, `llm_provider`), `fetch_signals`, `include_explanation`
 
-## Individual servers
-
-Prefer one tool at a time? Each actor also ships as its own MCP package:
-
-- [`@mambalabsdev/mcp-gtm-hiring-signal-scraper`](https://github.com/mambalabsdev/mcp-gtm-hiring-signal-scraper)
-- [`@mambalabsdev/mcp-gtm-tech-stack-signal-scraper`](https://github.com/mambalabsdev/mcp-gtm-tech-stack-signal-scraper)
-- [`@mambalabsdev/mcp-gtm-signals-aggregator`](https://github.com/mambalabsdev/mcp-gtm-signals-aggregator)
-- [`@mambalabsdev/mcp-job-board-keyword-signal-scanner`](https://github.com/mambalabsdev/mcp-job-board-keyword-signal-scanner)
-- [`@mambalabsdev/mcp-domain-to-linkedin-url-resolver`](https://github.com/mambalabsdev/mcp-domain-to-linkedin-url-resolver)
-- [`@mambalabsdev/mcp-icp-fit-scorer`](https://github.com/mambalabsdev/mcp-icp-fit-scorer)
-
 ## Full actor documentation
 
 For the complete input and output reference, pricing, and run history of each actor, see the Mamba Labs Apify Store page:
 
 https://apify.com/mambalabs
+
+---
+
+## Mamba Labs GTM Suite
+
+This is the umbrella server for the **Mamba Labs GTM Suite**, a fleet of eight specialized MCP servers for go-to-market signal intelligence, each backed by a dedicated Apify actor.
+
+| Actor | Immutable Actor ID |
+|---|---|
+| [GTM Hiring Signal Scraper](https://console.apify.com/actors/D7O1SA2EqwHGsGr1P) | `D7O1SA2EqwHGsGr1P` |
+| [GTM Tech Stack Signal Enrichment](https://console.apify.com/actors/qyd7nNyqFPelQViBx) | `qyd7nNyqFPelQViBx` |
+| [GTM Signals Aggregator](https://console.apify.com/actors/xKdRfnfFNkdMpFuNs) | `xKdRfnfFNkdMpFuNs` |
+| [Job Board Keyword Signal Scanner](https://console.apify.com/actors/4DvqpvhMR74NLcDDY) | `4DvqpvhMR74NLcDDY` |
+| [Domain to LinkedIn URL Resolver](https://console.apify.com/actors/3HtnSaqPHOg1Qg5gx) | `3HtnSaqPHOg1Qg5gx` |
+| [ICP Fit Scorer](https://console.apify.com/actors/W161DT8W4kW55dMFh) | `W161DT8W4kW55dMFh` |
+| [Domain Deliverability Checker](https://console.apify.com/actors/0tVgxI7A6o9jMlxmc) | `0tVgxI7A6o9jMlxmc` |
+| [Company Firmographic Enricher](https://console.apify.com/actors/YlUtLWjfPpqykmB8g) | `YlUtLWjfPpqykmB8g` |
+
+> Built by [Mamba Labs](https://github.com/mambalabsdev) | [npm](https://www.npmjs.com/org/mambalabsdev) | [Apify Store](https://apify.com/mambabuilt)
 
 ## License
 
