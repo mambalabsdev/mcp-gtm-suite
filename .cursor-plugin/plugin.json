@@ -1,8 +1,8 @@
 {
   "name": "mcp-gtm-suite",
   "displayName": "Mamba Labs GTM Suite",
-  "version": "1.0.1",
-  "description": "MCP server for the full Mamba Labs GTM Suite. Exposes all six GTM actors as tools in one server via Apify: hiring signals, tech stack, aggregator, job board scanner, LinkedIn resolver, and ICP scorer. Clay-ready output.",
+  "version": "1.1.0",
+  "description": "MCP server for the full Mamba Labs GTM Suite. Exposes all eleven account-intelligence actors as tools in one server via Apify: identity resolution, firmographics, social presence, hiring signals, tech stack, job board scanner, funding and press, change feed, LinkedIn resolver, signal aggregator, and ICP scorer. Clay-ready output.",
   "author": {
     "name": "Mamba Labs",
     "email": "labs@mambamindsetgrowth.com"

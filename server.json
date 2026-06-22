@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.mambabuilt/mcp-gtm-suite",
-  "description": "All six Mamba Labs GTM signal tools in one MCP server: hiring, tech, ICP, and more. Clay-ready.",
-  "version": "1.0.1",
+  "description": "All eleven Mamba Labs account-intelligence tools in one MCP server: identity, firmographics, social, hiring, tech, funding, change feed, LinkedIn, and ICP. Clay-ready.",
+  "version": "1.1.0",
   "repository": {
     "url": "https://github.com/mambalabsdev/mcp-gtm-suite",
     "source": "github"
@@ -11,7 +11,7 @@
     {
       "registryType": "npm",
       "identifier": "@mambalabsdev/mcp-gtm-suite",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       },

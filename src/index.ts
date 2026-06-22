@@ -30,6 +30,12 @@ function compact(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+// Some actors validate their input schema as strings (Clay sends every field as
+// a string), so booleans must be passed as "true"/"false" rather than raw bools.
+function boolToString(v: boolean | undefined): string | undefined {
+  return v === undefined ? undefined : v ? "true" : "false";
+}
+
 // Shared caller. actorPath is the actor's immutable Apify actor ID (a stable
 // 17-char key that survives Store renames). The /v2/acts/{id} endpoint accepts
 // it directly. We use IDs rather than the mambalabs~slug path so a Store rename
@@ -339,6 +345,257 @@ server.registerTool(
         include_explanation: args.include_explanation,
       }),
     ),
+);
+
+// 7. Company Identity Resolver
+server.registerTool(
+  "resolve_company_identity",
+  {
+    title: "Resolve Company Identity",
+    description:
+      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. Provide at least one of company_name, domain, or linkedin_url. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Resolve Company Identity",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      company_name: z
+        .string()
+        .optional()
+        .describe("Company name, e.g. Stripe. Provide at least one of company_name, domain, or linkedin_url."),
+      domain: z
+        .string()
+        .optional()
+        .describe("Bare company domain, e.g. stripe.com. The strongest canonical key when provided."),
+      linkedin_url: z
+        .string()
+        .optional()
+        .describe("LinkedIn company URL (https://www.linkedin.com/company/stripe) or bare slug (stripe)."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh resolution and ignore the 7 day result cache."),
+    },
+  },
+  async ({ company_name, domain, linkedin_url, skipCache }) => {
+    if (
+      (company_name === undefined || company_name === "") &&
+      (domain === undefined || domain === "") &&
+      (linkedin_url === undefined || linkedin_url === "")
+    ) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide at least one of company_name, domain, or linkedin_url." }],
+      };
+    }
+    return runActor(
+      "lr8fTRAmZCBZmuwwh",
+      "Company Identity Resolver",
+      compact({
+        company_name,
+        domain,
+        linkedin_url,
+        skipCache: boolToString(skipCache),
+      }),
+    );
+  },
+);
+
+// 8. Company Firmographic Enricher
+server.registerTool(
+  "enrich_company_firmographics",
+  {
+    title: "Enrich Company Firmographics",
+    description:
+      "Enrich a company domain into structured firmographics: employee band, industry, HQ, founded year, revenue estimate, logo, and description, with source provenance. Parsed from the company's schema.org/Organization JSON-LD and HTML meta tags and returned as a flat, Clay-ready JSON row with a source_signals array and a data_completeness score. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Enrich Company Firmographics",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .optional()
+        .describe("Bare company domain to enrich, e.g. stripe.com. Provide this or domains."),
+      company_name: z
+        .string()
+        .optional()
+        .describe("Optional company name, used as a fallback label when the page does not expose one."),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe("List of bare domains for batch processing. Takes precedence over domain."),
+      batchSize: z
+        .number()
+        .optional()
+        .describe("Domains enriched concurrently per wave in batch mode. Default 5, maximum 10."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh enrichment and ignore the 7 day result cache."),
+    },
+  },
+  async ({ domain, company_name, domains, batchSize, skipCache }) => {
+    if (
+      (domain === undefined || domain === "") &&
+      (!Array.isArray(domains) || domains.length === 0)
+    ) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide at least one of domain or domains." }],
+      };
+    }
+    return runActor(
+      "YlUtLWjfPpqykmB8g",
+      "Company Firmographic Enricher",
+      compact({ domain, company_name, domains, batchSize, skipCache }),
+    );
+  },
+);
+
+// 9. Company Social Presence Mapper
+server.registerTool(
+  "map_company_social_presence",
+  {
+    title: "Map Company Social Presence",
+    description:
+      "Map a company's social media presence across LinkedIn, X, Instagram, Facebook, and YouTube. Returns profile URLs and follower counts in flat Clay-ready JSON. Profiles are discovered from the company's own homepage links, a web search fallback, and pattern guessing, then validated against the company. Follower counts are extracted where public; X is URL-only (its count needs login) and Instagram and Facebook counts are best-effort. Provide at least one of company_domain or company_name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Map Company Social Presence",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      company_domain: z
+        .string()
+        .optional()
+        .describe("Bare company domain, e.g. stripe.com. Provide this or company_name."),
+      company_name: z
+        .string()
+        .optional()
+        .describe("Optional company name. Improves search accuracy and disambiguation. Provide this or company_domain."),
+      platforms: z
+        .array(z.enum(["linkedin", "x", "instagram", "facebook", "youtube"]))
+        .optional()
+        .describe("Which platforms to map. Defaults to all five."),
+      includeFollowerCounts: z
+        .boolean()
+        .optional()
+        .describe("Fetch profile pages to extract follower counts (default true). Set false for URLs only, which is cheaper."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh lookup and ignore the 7 day result cache."),
+    },
+  },
+  async ({ company_domain, company_name, platforms, includeFollowerCounts, skipCache }) => {
+    if (
+      (company_domain === undefined || company_domain === "") &&
+      (company_name === undefined || company_name === "")
+    ) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide at least one of company_domain or company_name." }],
+      };
+    }
+    return runActor(
+      "4k6CCemkgBDz18m2h",
+      "Company Social Presence Mapper",
+      compact({
+        company_domain,
+        company_name,
+        platforms,
+        includeFollowerCounts: boolToString(includeFollowerCounts),
+        skipCache: boolToString(skipCache),
+      }),
+    );
+  },
+);
+
+// 10. Funding & Press Signal Scanner
+server.registerTool(
+  "get_funding_press_signals",
+  {
+    title: "Get Funding and Press Signals",
+    description:
+      "Scan Google News and PR wires for funding rounds, executive moves, product launches, and acquisitions at any company domain. Returns deduplicated, dated events in flat Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Get Funding and Press Signals",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .describe("Company domain to scan, without https or www, e.g. stripe.com."),
+      company_name: z
+        .string()
+        .optional()
+        .describe("Optional company name hint, used when the domain does not match the brand name, e.g. Deel for deel.com."),
+    },
+  },
+  async ({ domain, company_name }) => {
+    if (domain === undefined || domain.trim() === "") {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide a company domain, e.g. stripe.com." }],
+      };
+    }
+    return runActor(
+      "FS13X6dhQVgX3XOM6",
+      "Funding & Press Signal Scanner",
+      compact({ domain, company_name }),
+    );
+  },
+);
+
+// 11. Company Change-Event Feed
+server.registerTool(
+  "get_company_changes",
+  {
+    title: "Get Company Changes",
+    description:
+      "Monitor a company domain for changes across hiring, tech stack, funding, firmographics, and social since the last run. Returns only what changed as typed change events in flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+    annotations: {
+      title: "Get Company Changes",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .describe("Company domain to monitor, without https or www, e.g. stripe.com."),
+      company_name: z
+        .string()
+        .optional()
+        .describe("Optional company name hint, used when the domain does not match the brand name, e.g. Deel for deel.com."),
+    },
+  },
+  async ({ domain, company_name }) => {
+    if (domain === undefined || domain.trim() === "") {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide a company domain, e.g. stripe.com." }],
+      };
+    }
+    return runActor(
+      "oX44rS0fkEJ3rXLWe",
+      "Company Change-Event Feed",
+      compact({ domain, company_name }),
+    );
+  },
 );
 
 const transport = new StdioServerTransport();
