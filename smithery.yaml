@@ -1,0 +1,24 @@
+# Smithery configuration for @mambalabsdev/mcp-gtm-suite
+# https://smithery.ai/docs
+#
+# Defines how Smithery launches the server to scan its tools and how users
+# configure it. The server is a stdio MCP server; it needs an Apify API token.
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - apifyToken
+    properties:
+      apifyToken:
+        type: string
+        title: Apify Token
+        description: Your Apify API token from https://console.apify.com/account/integrations. Used to run the Mamba Labs actors that back each tool.
+  commandFunction: |-
+    (config) => ({
+      command: 'npx',
+      args: ['-y', '@mambalabsdev/mcp-gtm-suite'],
+      env: { APIFY_TOKEN: config.apifyToken }
+    })
+  exampleConfig:
+    apifyToken: apify_api_REPLACE_WITH_YOUR_TOKEN
