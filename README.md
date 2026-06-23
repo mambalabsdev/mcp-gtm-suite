@@ -4,6 +4,17 @@
 
 One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all eleven account-intelligence tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
 
+## What's Inside
+
+- [What it does](#what-it-does)
+- [Quick start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Example prompts](#example-prompts)
+- [Tools and inputs](#tools-and-inputs)
+- [Full actor documentation](#full-actor-documentation)
+- [Mamba Labs GTM Suite](#mamba-labs-gtm-suite)
+- [License](#license)
+
 ## What it does
 
 This server gives an AI client eleven account-intelligence tools in one place, covering the full GTM workflow: resolve identity, enrich the account, detect buying signals, and score fit.
