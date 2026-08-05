@@ -598,5 +598,54 @@ server.registerTool(
   },
 );
 
+// 12. AI Tooling Detector
+server.registerTool(
+  "detect_ai_tooling",
+  {
+    title: "Detect AI Tooling",
+    description:
+      "Given a company domain, determine how far that company has gone with AI. Returns an ai_maturity tier of none, declared (says AI but nothing observable is running), deployed (AI tooling is live on the site), or commercialized (the pricing page charges for AI via credits, tokens, an add-on, an AI-named plan, or a per-outcome price), plus the detected AI vendors, validated llms.txt status, robots.txt AI-crawler policy, and the evidence behind the verdict. A domain behind a bot challenge returns blocked=true at low confidence rather than a false negative. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+    annotations: {
+      title: "Detect AI Tooling",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .optional()
+        .describe("Company domain to analyze, without https or www, e.g. intercom.com."),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe("Batch mode: several company domains analyzed in one call. Takes precedence over domain."),
+      check_pricing: z
+        .boolean()
+        .optional()
+        .describe("Fetch and score the pricing page. Default true. Setting this false is faster but caps the result at 'deployed', because 'commercialized' can only be proven on a pricing page."),
+    },
+  },
+  async ({ domain, domains, check_pricing }) => {
+    const hasBatch = Array.isArray(domains) && domains.length > 0;
+    if (!hasBatch && (domain === undefined || domain.trim() === "")) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide either domain (e.g. intercom.com) or domains (an array)." }],
+      };
+    }
+    return runActor(
+      "EwkHhmqiuJgRoVEbE",
+      "AI Tooling Detector",
+      compact({
+        domain: hasBatch ? undefined : domain,
+        domains: hasBatch ? domains : undefined,
+        check_pricing,
+      }),
+    );
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
