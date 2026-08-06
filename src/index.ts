@@ -647,5 +647,64 @@ server.registerTool(
   },
 );
 
+// 13. Outbound Infrastructure Fingerprint
+server.registerTool(
+  "fingerprint_outbound_infrastructure",
+  {
+    title: "Fingerprint Outbound Infrastructure",
+    description:
+      "Given a company domain, determine whether that company runs cold email outbound and on what stack. Returns a runs_outbound verdict of program (a deliberate cold outbound setup), light (one weak signal), none, or unknown, with the evidence behind it. The strongest signal is the lookalike sending domains a real program leaves behind: domains like getcompany.com or company-mail.com that carry their own mail and redirect back to the primary site. Also returns the inbox provider (Google Workspace, Microsoft 365 and others) for the primary domain and each sending domain, any detected sending platform (Outreach, Salesloft, Lemlist, Instantly, Smartlead, Apollo and more), registration clusters showing sending domains bought on the same day, cold email infrastructure vendors, and SPF, DKIM and DMARC posture. Sending platform recall is partial by design: sequencers that connect over OAuth to a customer's own mailbox leave no DNS trace, so an empty sending_platforms means little while a populated one is solid. Public DNS and HTTP redirects only. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+    annotations: {
+      title: "Fingerprint Outbound Infrastructure",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .optional()
+        .describe("Company domain to analyze, without https or www, e.g. smartlead.ai."),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe("Batch mode: several company domains analyzed in one call. Takes precedence over domain."),
+      scan_sending_domains: z
+        .boolean()
+        .optional()
+        .describe("Scan for lookalike sending domains. Default true. The strongest signal and the slowest step; turning it off caps the verdict at what platform and deliverability signals alone can prove."),
+      sending_domain_depth: z
+        .enum(["deep", "standard"])
+        .optional()
+        .describe("deep (default) checks .com, .co, .io, .net and .org. standard drops .net and .org."),
+      check_deliverability: z
+        .boolean()
+        .optional()
+        .describe("Add a blacklist check and a 0-100 health score by running the separate Domain Deliverability Checker actor, which bills its own per-domain rate on top of this one. Default false. SPF, DKIM and DMARC are read from DNS either way."),
+    },
+  },
+  async ({ domain, domains, scan_sending_domains, sending_domain_depth, check_deliverability }) => {
+    const hasBatch = Array.isArray(domains) && domains.length > 0;
+    if (!hasBatch && (domain === undefined || domain.trim() === "")) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide either domain (e.g. smartlead.ai) or domains (an array)." }],
+      };
+    }
+    return runActor(
+      "v43UJC8r7qW7cBSTG",
+      "Outbound Infrastructure Fingerprint",
+      compact({
+        domain: hasBatch ? undefined : domain,
+        domains: hasBatch ? domains : undefined,
+        scan_sending_domains,
+        sending_domain_depth,
+        check_deliverability,
+      }),
+    );
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
