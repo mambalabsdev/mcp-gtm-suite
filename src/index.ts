@@ -706,5 +706,65 @@ server.registerTool(
   },
 );
 
+// 14. Publication Cadence Tracker
+server.registerTool(
+  "track_publication_cadence",
+  {
+    title: "Track Publication Cadence",
+    description:
+      "Given a company domain, measure how much long-form work that company publishes and whether the rate is rising or falling. Returns post counts for the last 30 days, 90 days and 12 months, a monthly average, and a cadence_trend of accelerating, steady, declining, dormant or unknown, with the percent change behind it. The trend compares the last 90 days against the prior 275 days, both normalized to posts per month. Also returns the blog URL, the format mix (blog posts, guides, reports, case studies, whitepapers, podcasts, videos, press releases, research), the number of distinct bylines, and how the post list was discovered. This measures EDITORIAL output volume, not product changelogs: a release feed is detected and rejected rather than counted. Publication dates are read from the post pages, because sitemap lastmod was measured to be a modification date running later than publication by a median of 151 to 1653 days. When a site's date field tracks edits rather than publication, date_source_reliable comes back false and every count is nulled rather than reported wrong, so read that field before quoting a number. Counts are a census when the archive fits the page budget and a scaled even sample otherwise, flagged by counts_are_estimate. Public sitemaps, feeds and pages only. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+    annotations: {
+      title: "Track Publication Cadence",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+      domain: z
+        .string()
+        .optional()
+        .describe("Company domain to analyze, without https or www, e.g. zapier.com."),
+      domains: z
+        .array(z.string())
+        .optional()
+        .describe("Batch mode: several company domains analyzed in one call. Takes precedence over domain."),
+      max_pages_to_date: z
+        .number()
+        .int()
+        .min(20)
+        .max(800)
+        .optional()
+        .describe("How many post pages to fetch per domain for dating. Default 400. Above this cap the counts are estimated from an even sample and counts_are_estimate is set true."),
+      domain_time_budget_ms: z
+        .number()
+        .int()
+        .min(15000)
+        .max(240000)
+        .optional()
+        .describe("Hard wall-clock ceiling per domain, default 75000. When nearly spent the crawl stops and the row is returned with partial_result true rather than timing out."),
+    },
+  },
+  async ({ domain, domains, max_pages_to_date, domain_time_budget_ms }) => {
+    const hasBatch = Array.isArray(domains) && domains.length > 0;
+    if (!hasBatch && (domain === undefined || domain.trim() === "")) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: "Provide either domain (e.g. zapier.com) or domains (an array)." }],
+      };
+    }
+    return runActor(
+      "TbLwaUUATdYb6wp4N",
+      "Publication Cadence Tracker",
+      compact({
+        domain: hasBatch ? undefined : domain,
+        domains: hasBatch ? domains : undefined,
+        max_pages_to_date,
+        domain_time_budget_ms,
+      }),
+    );
+  },
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
