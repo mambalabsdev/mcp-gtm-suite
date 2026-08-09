@@ -2,7 +2,7 @@
 
 [![Smithery](https://smithery.ai/badge/mambabuilt/mcp-gtm-suite)](https://smithery.ai/servers/mambabuilt/mcp-gtm-suite) [![Glama score](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite/badges/score.svg)](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite) [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dcom.mambabuilt%252Fmcp-gtm-suite%26limit%3D1&query=%24.servers%5B0%5D._meta%5B%22io.modelcontextprotocol.registry%2Fofficial%22%5D.status&label=mcp%20registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=com.mambabuilt/mcp-gtm-suite&limit=1) [![npm version](https://img.shields.io/npm/v/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![npm downloads](https://img.shields.io/npm/dm/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![license](https://img.shields.io/github/license/mambalabsdev/mcp-gtm-suite)](https://github.com/mambalabsdev/mcp-gtm-suite/blob/main/LICENSE) [![mcpservers.org](https://img.shields.io/badge/mcpservers.org-listed-blue)](https://mcpservers.org/servers/mambalabsdev/mcp-gtm-suite)
 
-One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all fourteen account-intelligence tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
+One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all fifteen account-intelligence tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
 
 ## What's Inside
 
@@ -17,7 +17,7 @@ One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single pa
 
 ## What it does
 
-This server gives an AI client fourteen account-intelligence tools in one place, covering the full GTM workflow: resolve identity, enrich the account, detect buying signals, and score fit.
+This server gives an AI client fifteen account-intelligence tools in one place, covering the full GTM workflow: resolve identity, enrich the account, detect buying signals, score fit, and push the survivors into a sequencer.
 
 **Identity and enrichment**
 
@@ -64,7 +64,7 @@ Add this to your Claude Desktop config:
 }
 ```
 
-Get your token at https://console.apify.com/account/integrations, paste it in, and restart Claude Desktop. All fourteen tools will be available.
+Get your token at https://console.apify.com/account/integrations, paste it in, and restart Claude Desktop. All fifteen tools will be available.
 
 ## Prerequisites
 
@@ -97,6 +97,7 @@ Each tool maps to one Apify actor. Inputs mirror the actor, minus deprecated and
 - `detect_ai_tooling`: at least one of `domain` or `domains`, plus `check_pricing`
 - `fingerprint_outbound_infrastructure`: at least one of `domain` or `domains`, plus `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`
 - `track_publication_cadence`: at least one of `domain` or `domains`, plus `max_pages_to_date`, `domain_time_budget_ms`
+- `push_leads_to_sequencer`: `sequencer` and `campaign_id` (required), one of `leads` or `dataset_id`, plus `api_key`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`. **The only tool here that writes**: it adds leads to your campaign unless `dry_run` is true.
 
 ## Full actor documentation
 
@@ -108,7 +109,7 @@ https://apify.com/mambalabs
 
 ## Mamba Labs GTM Suite
 
-This is the umbrella server for the **Mamba Labs GTM Suite**, an account-intelligence fleet of fourteen tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server.
+This is the umbrella server for the **Mamba Labs GTM Suite**, an account-intelligence fleet of fifteen tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server.
 
 | Tool | Actor | Immutable Actor ID |
 |---|---|---|
@@ -123,6 +124,7 @@ This is the umbrella server for the **Mamba Labs GTM Suite**, an account-intelli
 | `get_company_changes` | [Company Change-Event Feed](https://console.apify.com/actors/oX44rS0fkEJ3rXLWe) | `oX44rS0fkEJ3rXLWe` |
 | `aggregate_gtm_signals` | [GTM Signals Aggregator](https://console.apify.com/actors/xKdRfnfFNkdMpFuNs) | `xKdRfnfFNkdMpFuNs` |
 | `score_icp_fit` | [ICP Fit Scorer](https://console.apify.com/actors/W161DT8W4kW55dMFh) | `W161DT8W4kW55dMFh` |
+| `push_leads_to_sequencer` | [Sequencer Lead Push](https://console.apify.com/actors/0Jv27VeWM5tSZQs9x) | `0Jv27VeWM5tSZQs9x` |
 
 > The [Domain Deliverability Checker](https://console.apify.com/actors/0tVgxI7A6o9jMlxmc) actor is published as a standalone MCP server but is intentionally not bundled here: it audits email-sending infrastructure (SPF, DKIM, DMARC, blacklists) rather than account intelligence, so it sits outside this suite's scope.
 
