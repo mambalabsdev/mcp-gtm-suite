@@ -996,5 +996,37 @@ server.registerTool(
     runActor("zhEtllASykOcx9hJ8", "Government Contract Award Monitor", compact(args as Record<string, unknown>)),
 );
 
+
+// 21. LinkedIn Post Tracker and Comment Capture, added 2026-08-12 when the
+// actor went public and was onboarded into the audited fleet. Definition copied
+// verbatim from the standalone wrapper so the two cannot describe it
+// differently.
+server.registerTool(
+  "capture_linkedin_posts_and_commenters",
+  {
+    title: "Capture LinkedIn Posts and Commenters",
+    description:
+      "Point it at LinkedIn person profiles or company pages and it returns their recent posts as flat rows, with the real reaction and comment counts on every one, plus the commenters LinkedIn shows publicly. No cookies, no LinkedIn account, no credentials of any kind. One dataset carries three row types told apart by row_type: post, engager and notice, so filter on row_type before loading a table. post_id is the numeric activity URN and is stable across runs and across both permalink spellings, which makes it safe as a primary key and as a have-I-already-seen-this check. Read the limits before relying on the commenters: LinkedIn renders about ten top-level comments to a logged-out visitor whatever the real total, measured whole-run coverage was 3.7 percent, and roughly 30 percent of comment rows carry no timestamp. Reactor identities are not served to a logged-out visitor at all, so every post row carries the real reaction_count and reactors_status says unavailable_without_login. Every row carries degraded and degradation_reason: filter on degraded before you trust an absence. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Capture LinkedIn Posts and Commenters",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    profile_urls: z.array(z.string()).optional().describe("LinkedIn person profile URLs whose recent posts you want, for example https://www.linkedin.com/in/williamhgates. Country subdomains such as uk.linkedin.com are fine. Supply this, company_urls, or both."),
+    company_urls: z.array(z.string()).optional().describe("LinkedIn company page URLs whose recent posts you want, for example https://www.linkedin.com/company/microsoft. Supply this, profile_urls, or both."),
+    posted_since: z.string().optional().describe("ISO date or timestamp, for example 2026-08-01. Posts published before this are skipped BEFORE anything is charged, so a scheduled run that finds nothing new costs the actor start and nothing else. Leave empty to take everything the page advertises."),
+    collect_commenters: z.boolean().optional().describe("Return one row per person who commented, with name, profile URL, comment text and comment likes. Turn it off to collect posts only, in which case commenters_collected comes back null rather than 0, because the actor did not look. Default: true."),
+    collect_reactors: z.boolean().optional().describe("LinkedIn serves no reactor identities to a logged-out visitor, so this returns no reaction rows whatever you set. It exists so the limit is visible rather than silent, and it adds one notice row per run. Set it to false to suppress that row. Default: true."),
+    max_engagers_per_post: z.number().int().min(0).max(100).optional().describe("Caps the engager rows charged per post. LinkedIn shows about ten comments to a logged-out visitor, so ten is the platform ceiling and raising this above ten does nothing. Set it to 0 to pay for posts only. Default: 10."),
+    use_residential_proxy: z.boolean().optional().describe("Off by default, which is what the pricing assumes and what was measured. Turn it on only if LinkedIn starts refusing the platform's datacenter addresses. Apify bills residential bandwidth on top of this actor's events. Default: false."),
+    },
+  },
+  async (args) =>
+    runActor("oiGLNPuaf5BRaz9K5", "LinkedIn Post Tracker and Comment Capture", compact(args as Record<string, unknown>)),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
