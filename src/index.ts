@@ -852,5 +852,149 @@ server.registerTool(
   },
 );
 
+
+// ---------------------------------------------------------------------------
+// 16 to 20, added 2026-08-12. Five actors that had a standalone wrapper on npm
+// and were not in the bundle, so a buyer installing the suite got 15 of the
+// fleet's 20 published tools and no way to tell which five were missing.
+// Definitions are copied verbatim from each standalone wrapper so the two
+// packages cannot describe the same tool differently.
+// ---------------------------------------------------------------------------
+// 16. agent accessibility auditor
+server.registerTool(
+  "audit_agent_accessibility",
+  {
+    title: "Audit Agent Accessibility",
+    description:
+      "Give it a domain and it returns whether an AI agent can read that site, and what the site's policy says, as one flat row of 42 fields across five families: the llms.txt family including llms-full.txt and ai.txt, robots.txt AI crawler policy including the newer Content Signal directives, structured data presence and health across JSON-LD, microdata, Open Graph and canonical, render mode, and machine readable endpoint discovery covering sitemap, OpenAPI, well known files and feeds. Every field is a fact read off a fetch. No model is called at any point, so the same domain returns the same row today and next month unless the site actually changed. Twelve requests per domain, typically 2 to 4 seconds. Built for a technical SEO or growth engineer preparing a site for AI crawlers, or an agency selling that work and needing a before and after audit across a client list. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Audit Agent Accessibility",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    domain: z.string().describe("One company domain, for example vercel.com. Protocol and path are stripped."),
+    check_endpoints: z.boolean().optional().describe("Probes sitemap, OpenAPI, well known files and feeds. Adds 7 concurrent requests. Default: true."),
+    check_structured_data: z.boolean().optional().describe("Parses JSON-LD, microdata, Open Graph and canonical off the homepage. Costs no extra requests. Default: true."),
+    skipCache: z.enum(["false", "true"]).optional().describe("Leave as false to use the 7 day cache. Set to true to re-audit the domain from scratch. Default: \"false\"."),
+    },
+  },
+  async (args) =>
+    runActor("anxbRv0lKrpQ1pnua", "Agent Accessibility Auditor", compact(args as Record<string, unknown>)),
+);
+
+// 17. contact classifier
+server.registerTool(
+  "classify_contact",
+  {
+    title: "Classify Contact",
+    description:
+      "One contact in, one classified row out. Give it a job title and it returns the department, the seniority level, a seniority_rank from 1 to 12 you can filter with a comparison, and classification_rule, the named rule that fired, so every decision is auditable. The classification is a deterministic rule table: it needs no API key, calls no model, and returns the same answer for the same title every time. Only job_title is required. full_name and company_domain are read only when verify_position is on, which checks whether the person is still listed on their employer's own website and adds roughly 3 seconds and 9 requests per contact. The optional LLM fallback for titles the rules cannot place runs on your own key, set as the LLM_API_KEY secret environment variable on your own copy of the actor, and only the title is ever sent, never the person's name. With no key set those titles come back null rather than failing the row. This actor does not discover people: the name and title come from you. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Classify Contact",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    job_title: z.string().describe("The contact's job title, exactly as you hold it. Classified by deterministic rules with no API key needed."),
+    full_name: z.string().optional().describe("Only needed for position verification. Classification works without it. This name is never sent to any language model."),
+    company_domain: z.string().optional().describe("Only needed for position verification. The company's website domain, with or without https."),
+    verify_position: z.boolean().optional().describe("Check whether the person is still listed on their employer's own website. Off by default. Adds roughly 3 seconds and 9 requests per contact, and needs both the name and the domain. Default: false."),
+    use_llm_fallback: z.boolean().optional().describe("Off by default. When on, titles the rules cannot place are sent to your own model using the LLM_API_KEY secret environment variable you set on your copy of this Actor. Only the title is sent, never the person's name. With no key set the Actor still returns a row, it just leaves those titles null. Default: false."),
+    llm_provider: z.enum(["openai", "anthropic", "google"]).optional().describe("Which provider your LLM_API_KEY belongs to. Only read when the LLM fallback is on. Default: \"openai\"."),
+    llm_model: z.string().optional().describe("Model id passed straight through to the provider. Only read when the LLM fallback is on. Default: \"gpt-4o-mini\"."),
+    skipCache: z.enum(["false", "true"]).optional().describe("Set to true to ignore cached results and classify from scratch. Default: \"false\"."),
+    },
+  },
+  async (args) =>
+    runActor("0lGSeYJmniXhGANnO", "Contact Classifier", compact(args as Record<string, unknown>)),
+);
+
+// 18. event presence index
+server.registerTool(
+  "map_company_event_presence",
+  {
+    title: "Map Company Event Presence",
+    description:
+      "Give it a company domain. It returns the third party conferences and trade shows that company publicly says it attends, with a year for each where one can be resolved, as one flat row. The search runs against the company's own domain, which is what stops a brand collision returning another company's events. The company's own conference is reported separately and is never mixed into the attendance list. It finds events for roughly 2 companies in 10, and an empty row is an honest empty row rather than a guess: read coverage, fetch_status and queries_failed to tell a company with no published events apart from a search that could not see. Events dated outside the years you ask for are still returned and flagged, so filter on event year rather than assuming the input filtered for you. This is not an events database and not an exhibitor list: it takes a company and reports what that company publishes. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Map Company Event Presence",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    domain: z.string().describe("A single company domain, for example 6sense.com. Protocol and path are stripped."),
+    company_name: z.string().optional().describe("Improves matching when the brand differs from the domain stem, for example Gong for gong.io. Derived from the domain when left empty."),
+    years: z.string().optional().describe("Comma separated, for example 2025,2026. Events dated outside this set are still returned and flagged. Sent as a string so it works from Clay. Default: \"2025,2026\"."),
+    include_own_events: z.boolean().optional().describe("Reports whether the company runs its own conference as a separate field. It is never mixed into the attendance list. Default: true."),
+    max_queries: z.string().optional().describe("Between 1 and 5. Each query costs roughly 0.8 seconds plus a 1.3 second pause. 2 is the measured sweet spot: search engines refuse a third query from the same container almost every time, and the third query added no events the first two did not already find. Sent as a string so it works from Clay. Default: \"2\"."),
+    skipCache: z.enum(["false", "true"]).optional().describe("false uses the 21 day result cache. true forces a fresh look. Default: \"false\"."),
+    },
+  },
+  async (args) =>
+    runActor("WLhMy8fMDgsxdYxv5", "Event Presence Index", compact(args as Record<string, unknown>)),
+);
+
+// 19. legal entity resolver
+server.registerTool(
+  "resolve_legal_entity",
+  {
+    title: "Resolve Legal Entity",
+    description:
+      "Give it a company domain and it returns the registered legal entity behind it: legal name, company number, jurisdiction, status, entity type, LEI and VAT number, as one flat row with a full audit trail of what was rejected and why. Three registers are queried: UK Companies House, GLEIF and SEC EDGAR. Register search endpoints are fuzzy and always return something, so by default a record is accepted only when the normalized legal names are identical. That is why roughly 6 domains in 10 resolve rather than 10 in 10, and why a null here is a trustworthy answer rather than a gap. Read match_method, match_confidence and rejected_candidates before acting on a match. Setting match_strictness to fuzzy will hand you a confidently wrong company on most domains and should be treated as a research mode, not a default. This is not a company database and not a credit or risk product. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Resolve Legal Entity",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    domain: z.string().describe("A single company domain, for example monzo.com. Protocol and path are stripped."),
+    legal_name_hint: z.string().optional().describe("Skips the domain lookup and goes straight to the registers with this name. Use it when you already have the legal name and just want the register record."),
+    jurisdiction_hint: z.string().optional().describe("ISO-2 country code, for example GB or US. Narrows which registers are queried and cuts latency. Leave empty to query every register."),
+    match_strictness: z.enum(["exact", "fuzzy"]).optional().describe("exact accepts a register record only when the normalized legal names are equal, which is the default and the recommendation. fuzzy returns the best scoring candidate with a confidence below 100 and a warning in rejected_candidates. Register search is fuzzy and always returns something, so fuzzy mode will hand you a confidently wrong company on most domains. Default: \"exact\"."),
+    validate_vat: z.boolean().optional().describe("Runs any VAT number found on the company's own pages through the EU VIES service and returns the name VIES holds for it, as a cross-check against the register name. Default: true."),
+    skipCache: z.enum(["false", "true"]).optional().describe("false uses the cache: 90 days for a resolved company, 7 days for a null. true forces a fresh look. Default: \"false\"."),
+    },
+  },
+  async (args) =>
+    runActor("KHFyPCDIx7CyqULYm", "Legal Entity Resolver", compact(args as Record<string, unknown>)),
+);
+
+// 20. public award monitor
+server.registerTool(
+  "monitor_public_awards",
+  {
+    title: "Monitor Public Awards",
+    description:
+      "Pick a public award register and a time window and it returns the companies that won public work in it, one flat row per winning company rather than one per award, with award count, total value, largest award, awarding body, award date, a deep link to the source record, and a resolved company domain. Five registers are covered: US federal contracts and US federal grants from USASpending, NIH SBIR and STTR from NIH RePORTER, and UK Contracts Finder and UK Find a Tender. This reports awards that have already been made, so it is not a tender feed and will not tell you what is open to bid on. US federal data lags about two days, so a one day window on a US register returns little or nothing. Winners are sorted by total award value and max_entities is the hard cap on billed rows. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+    annotations: {
+      title: "Monitor Public Awards",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    inputSchema: {
+    register: z.enum(["us_federal_contracts", "us_federal_grants", "us_nih_sbir", "uk_contracts_finder", "uk_find_a_tender"]).describe("Which award register to read. US federal contracts and grants come from USASpending, NIH SBIR and STTR from NIH RePORTER, and the two UK registers from Contracts Finder and Find a Tender. Default: \"us_federal_contracts\"."),
+    window_days: z.string().optional().describe("How many days back from today to read awards for. 1 to 90. US federal data lags about two days, so do not use a one day window on the US registers. Sent as a string so it works from Clay. Default: \"7\"."),
+    min_award_value: z.string().optional().describe("Drops awards below this amount in the register's own currency. Set to 0 to keep everything. Sent as a string so it works from Clay. Default: \"100000\"."),
+    max_entities: z.string().optional().describe("Hard cap on billed rows. 1 to 1000. Winners are sorted by total award value, and the run log says how many were dropped. Sent as a string so it works from Clay. Default: \"100\"."),
+    exclude_government_recipients: z.boolean().optional().describe("Drops winners that are themselves government, universities, or public authorities. Leave this on for the grant registers or you get state departments of education instead of companies. Default: true."),
+    resolve_domains: z.boolean().optional().describe("Looks up each winner's website. Turning it off makes the run roughly 20x faster and returns recipient_domain as null with domain_status not_attempted. Default: true."),
+    domain_confidence_floor: z.enum(["strict", "standard", "loose"]).optional().describe("How sure the actor has to be before it gives you a domain. Strict returns fewer domains and almost no wrong ones. Loose returns the most domains and about a third of them are wrong. Default: \"standard\"."),
+    },
+  },
+  async (args) =>
+    runActor("zhEtllASykOcx9hJ8", "Government Contract Award Monitor", compact(args as Record<string, unknown>)),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);
