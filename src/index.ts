@@ -127,13 +127,30 @@ server.registerTool(
       .string()
       .optional()
       .describe("Optional ATS board slug override when it differs from the domain."),
+    mode: z
+      .enum(["single", "batch", "velocity"])
+      .optional()
+      .describe("Processing mode. \"single\" scores the domain. \"velocity\" compares this run against previous_gtm_role_count and previous_run_date. \"batch\" is an actor-level mode this single-call tool supplies no list for. Default: \"single\"."),
+    include_role_details: z
+      .boolean()
+      .optional()
+      .describe("When true, include the full per-role detail array (title, department, location, url). Default: false."),
+    previous_gtm_role_count: z
+      .number()
+      .int()
+      .optional()
+      .describe("GTM role count from the previous run for this domain, used in velocity mode to compute the delta."),
+    previous_run_date: z
+      .string()
+      .optional()
+      .describe("ISO date of the previous run for this domain, used in velocity mode to report days between runs."),
   },
   },
-  async ({ domain, role_filter, ats_slug }) =>
+  async ({ domain, role_filter, ats_slug, mode, include_role_details, previous_gtm_role_count, previous_run_date }) =>
     runActor(
       "D7O1SA2EqwHGsGr1P",
       "GTM Hiring Signal Scraper",
-      compact({ domain, role_filter, ats_slug }),
+      compact({ domain, role_filter, ats_slug, mode, include_role_details, previous_gtm_role_count, previous_run_date }),
     ),
 );
 
@@ -152,19 +169,44 @@ server.registerTool(
       openWorldHint: true,
     },
     inputSchema: {
-    domain: z.string().describe("Bare company domain, e.g. stripe.com"),
+    domain: z
+      .string()
+      .optional()
+      .describe("Bare company domain, e.g. stripe.com. Supply this, company_domain or url."),
+    company_domain: z
+      .string()
+      .optional()
+      .describe("Deprecated alias for domain, accepted by the actor for older callers. Prefer domain."),
+    url: z
+      .string()
+      .optional()
+      .describe("Deprecated alias for domain, accepted by the actor as a full company website URL. Prefer domain."),
     crawl_additional_pages: z
       .boolean()
       .optional()
       .describe("Crawl up to 2 extra pages for better coverage. Defaults to true when omitted."),
+    skipCache: z
+      .boolean()
+      .optional()
+      .describe("By default a clean detection is cached for 7 days and reused. Set true to force a fresh detection."),
   },
   },
-  async ({ domain, crawl_additional_pages }) =>
-    runActor(
+  async ({ domain, company_domain, url, crawl_additional_pages, skipCache }) => {
+    // Measured 2026-08-13: the actor's built schema marks nothing required, but
+    // with no company named at all the run throws and exits FAILED. Rejecting
+    // here rejects only what the actor itself rejects.
+    if (domain === undefined && company_domain === undefined && url === undefined) {
+      return {
+        isError: true,
+        content: [{ type: "text" as const, text: "Provide domain, company_domain or url. The actor cannot run without one of them." }],
+      };
+    }
+    return runActor(
       "qyd7nNyqFPelQViBx",
       "GTM Tech Stack Signal Enrichment",
-      compact({ domain, crawl_additional_pages }),
-    ),
+      compact({ domain, company_domain, url, crawl_additional_pages, skipCache }),
+    );
+  },
 );
 
 // 3. GTM Signals Aggregator
@@ -274,9 +316,17 @@ server.registerTool(
       .optional()
       .describe("Bare company domain, e.g. stripe.com. Required if company_name is not provided."),
     company_name: z.string().optional().describe("Company name. Required if company_domain is not provided."),
+    includeFirmographics: z
+      .enum(["false", "true"])
+      .optional()
+      .describe("When \"true\", also fetches the public LinkedIn company page to add employee count, industry, HQ, follower count and description. Off by default because it is the most expensive step. Sent as a string for Clay compatibility."),
+    skipCache: z
+      .enum(["false", "true"])
+      .optional()
+      .describe("When \"false\", the default, a successful resolution is cached for 7 days and reused. Set \"true\" to force a fresh resolution. Sent as a string for Clay compatibility."),
   },
   },
-  async ({ company_domain, company_name }) => {
+  async ({ company_domain, company_name, includeFirmographics, skipCache }) => {
     if (
       (company_domain === undefined || company_domain === "") &&
       (company_name === undefined || company_name === "")
@@ -289,7 +339,7 @@ server.registerTool(
     return runActor(
       "3HtnSaqPHOg1Qg5gx",
       "Domain to LinkedIn URL Resolver",
-      compact({ company_domain, company_name }),
+      compact({ company_domain, company_name, includeFirmographics, skipCache }),
     );
   },
 );
@@ -327,6 +377,40 @@ server.registerTool(
       .boolean()
       .optional()
       .describe("If true, adds a score_explanation string to the output."),
+    tier_thresholds: z.record(z.any()).optional().describe("Optional. Minimum score for each tier as { \"tier_a\": number, \"tier_b\": number, \"tier_c\": number }. Scores at or above tier_a are A, tier_b are B, tier_c are C, else D. Defaults to 80 / 60 / 40."),
+    funded_within_days: z.number().int().optional().describe("Optional. How recent a funding round must be to count for the recently_funded signal, in days. Defaults to 540 (18 months)."),
+    min_score_to_output: z.number().int().optional().describe("If set, rows scoring below this threshold are skipped from output (not pushed to dataset). Skipped rows are logged only."),
+    previous_score: z.number().int().optional().describe("Previous ICP score for this company. If provided, output includes score_change and score_trend fields."),
+    gtm_hiring_signal: z.string().optional().describe("Whether the company is actively hiring for GTM/sales roles. Accepts a boolean-like string (\"true\"/\"false\"). Sent as a string for Clay compatibility and coerced to boolean at runtime."),
+    gtm_role_count: z.string().optional().describe("Number of open GTM/sales roles. Scores via the gtm_role_count_strong signal when at or above min_gtm_roles (default 2). Accepts a numeric string (e.g. \"8\"). Sent as a string for Clay compatibility and coerced to integer at runtime."),
+    uses_hubspot: z.string().optional().describe("Whether the company uses HubSpot. Accepts a boolean-like string (\"true\"/\"false\"). Sent as a string for Clay compatibility and coerced to boolean at runtime."),
+    uses_salesforce: z.string().optional().describe("Whether the company uses Salesforce. Accepts a boolean-like string (\"true\"/\"false\"). Sent as a string for Clay compatibility and coerced to boolean at runtime."),
+    uses_clay: z.string().optional().describe("Whether the company uses Clay. Accepts a boolean-like string (\"true\"/\"false\"). Sent as a string for Clay compatibility and coerced to boolean at runtime."),
+    crm_detected: z.string().optional().describe("Whether any CRM was detected. Accepts a boolean-like string (\"true\"/\"false\") or any non-empty CRM name (e.g. \"Salesforce\"). Sent as a string for Clay compatibility and coerced to boolean at runtime. Auto-derived from uses_hubspot/uses_salesforce if not set."),
+    seq_tool_detected: z.string().optional().describe("Whether a sales sequencing tool (Outreach, SalesLoft, Apollo, Lemlist) was detected. Accepts a boolean-like string (\"true\"/\"false\") or any non-empty tool name (e.g. \"Outreach\"). Sent as a string for Clay compatibility and coerced to boolean at runtime."),
+    tech_stack: z.string().optional().describe("Comma-separated list of technologies. Used to auto-detect CRM/sequencing tools if booleans are not set."),
+    headcount: z.string().optional().describe("Current employee headcount. Accepts a numeric string (e.g. \"3000\"). Sent as a string for Clay compatibility and coerced to integer at runtime."),
+    headcount_min: z.number().int().optional().describe("Minimum headcount for the headcount_in_range signal."),
+    headcount_max: z.number().int().optional().describe("Maximum headcount for the headcount_in_range signal."),
+    headcount_in_range: z.boolean().optional().describe("Override: whether headcount is in your target range."),
+    employee_band: z.string().optional().describe("Firmographic employee band from the Company Firmographic Enricher (Actor ID YlUtLWjfPpqykmB8g), e.g. \"201-500\". Scores via employee_band_match when it is in target_employee_bands."),
+    revenue_estimate: z.string().optional().describe("Estimated annual revenue in dollars from the Company Firmographic Enricher (Actor ID YlUtLWjfPpqykmB8g). Scores via revenue_in_range. Accepts a numeric string (e.g. \"50000000\"). Coerced to integer at runtime."),
+    hq_location: z.string().optional().describe("Headquarters location from the Company Firmographic Enricher (Actor ID YlUtLWjfPpqykmB8g). Carried for reference; not currently scored."),
+    founded_year: z.string().optional().describe("Year the company was founded, from the Company Firmographic Enricher (Actor ID YlUtLWjfPpqykmB8g). Carried for reference; not currently scored. Accepts a numeric string (e.g. \"2015\")."),
+    recently_funded: z.boolean().optional().describe("Override: whether the company was recently funded (within funded_within_days, default 540)."),
+    last_funding_date: z.string().optional().describe("ISO date of last funding round (legacy field; latest_funding_date is preferred). Used to auto-detect recently_funded if the boolean is not set."),
+    latest_funding_date: z.string().optional().describe("ISO date of the latest funding round (from C1 Funding & Press Signal Scanner when it ships). Drives recently_funded against funded_within_days."),
+    latest_funding_amount: z.string().optional().describe("Dollar amount of the latest funding round (from C1 when it ships). Scores via well_funded when at or above min_funding_amount (default 1000000). Accepts a numeric string (e.g. \"50000000\")."),
+    funding_stage: z.string().optional().describe("Funding stage (e.g. seed, series_a, series_b, growth). Used to infer recently_funded."),
+    industry: z.string().optional().describe("The company's industry (from the Company Firmographic Enricher, Actor ID YlUtLWjfPpqykmB8g)."),
+    industry_match: z.boolean().optional().describe("Override: whether the company's industry matches your target list."),
+    target_industries: z.string().optional().describe("Comma-separated list of target industries for the industry_match signal."),
+    social_platforms_found: z.string().optional().describe("Number of official social platforms found, from the Company Social Presence Mapper (Actor ID 4k6CCemkgBDz18m2h). Scores via social_presence when at or above min_social_platforms (default 2). Accepts a numeric string."),
+    total_followers: z.string().optional().describe("Total social followers across platforms, from the Company Social Presence Mapper (Actor ID 4k6CCemkgBDz18m2h). Scores via strong_social_following when at or above min_total_followers (default 1000). Accepts a numeric string."),
+    has_linkedin: z.string().optional().describe("Whether a company LinkedIn page was found, from the Company Social Presence Mapper (Actor ID 4k6CCemkgBDz18m2h) or the Domain to LinkedIn URL Resolver (Actor ID 3HtnSaqPHOg1Qg5gx). Contributes to social_presence. Accepts a boolean-like string."),
+    has_twitter: z.string().optional().describe("Whether a company X/Twitter profile was found, from the Company Social Presence Mapper (Actor ID 4k6CCemkgBDz18m2h). Contributes to social_presence. Accepts a boolean-like string."),
+    job_count: z.string().optional().describe("Number of open jobs found, from the Job Board Keyword Signal Scanner (Actor ID 4DvqpvhMR74NLcDDY). Scores via active_hiring_volume when at or above min_job_count (default 3). Accepts a numeric string."),
+    keyword_match_count: z.string().optional().describe("Number of target-keyword matches found, from the Job Board Keyword Signal Scanner (Actor ID 4DvqpvhMR74NLcDDY). Scores via keyword_signal_match when at or above min_keyword_matches (default 1). Accepts a numeric string."),
   },
   },
   async (args) =>
@@ -343,6 +427,40 @@ server.registerTool(
         llm_provider: args.llm_provider,
         fetch_signals: args.fetch_signals,
         include_explanation: args.include_explanation,
+        tier_thresholds: args.tier_thresholds,
+        funded_within_days: args.funded_within_days,
+        min_score_to_output: args.min_score_to_output,
+        previous_score: args.previous_score,
+        gtm_hiring_signal: args.gtm_hiring_signal,
+        gtm_role_count: args.gtm_role_count,
+        uses_hubspot: args.uses_hubspot,
+        uses_salesforce: args.uses_salesforce,
+        uses_clay: args.uses_clay,
+        crm_detected: args.crm_detected,
+        seq_tool_detected: args.seq_tool_detected,
+        tech_stack: args.tech_stack,
+        headcount: args.headcount,
+        headcount_min: args.headcount_min,
+        headcount_max: args.headcount_max,
+        headcount_in_range: args.headcount_in_range,
+        employee_band: args.employee_band,
+        revenue_estimate: args.revenue_estimate,
+        hq_location: args.hq_location,
+        founded_year: args.founded_year,
+        recently_funded: args.recently_funded,
+        last_funding_date: args.last_funding_date,
+        latest_funding_date: args.latest_funding_date,
+        latest_funding_amount: args.latest_funding_amount,
+        funding_stage: args.funding_stage,
+        industry: args.industry,
+        industry_match: args.industry_match,
+        target_industries: args.target_industries,
+        social_platforms_found: args.social_platforms_found,
+        total_followers: args.total_followers,
+        has_linkedin: args.has_linkedin,
+        has_twitter: args.has_twitter,
+        job_count: args.job_count,
+        keyword_match_count: args.keyword_match_count,
       }),
     ),
 );
@@ -581,9 +699,18 @@ server.registerTool(
         .string()
         .optional()
         .describe("Optional company name hint, used when the domain does not match the brand name, e.g. Deel for deel.com."),
+      previous_snapshot: z
+        .record(z.unknown())
+        .optional()
+        .describe("Snapshot object returned by a prior run. Supply it and it is the baseline instead of stored state, which is what makes a scheduled run cheap."),
+      sub_actor_timeout_secs: z
+        .number()
+        .int()
+        .optional()
+        .describe("Per-child run timeout in seconds. Children run in parallel, so total wall time is about the slowest child. Default: 90."),
     },
   },
-  async ({ domain, company_name }) => {
+  async ({ domain, company_name, previous_snapshot, sub_actor_timeout_secs }) => {
     if (domain === undefined || domain.trim() === "") {
       return {
         isError: true,
@@ -593,7 +720,7 @@ server.registerTool(
     return runActor(
       "oX44rS0fkEJ3rXLWe",
       "Company Change-Event Feed",
-      compact({ domain, company_name }),
+      compact({ domain, company_name, previous_snapshot, sub_actor_timeout_secs }),
     );
   },
 );
@@ -625,9 +752,18 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Fetch and score the pricing page. Default true. Setting this false is faster but caps the result at 'deployed', because 'commercialized' can only be proven on a pricing page."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh analysis and ignore the 7 day result cache."),
+      request_timeout_ms: z
+        .number()
+        .int()
+        .optional()
+        .describe("Per-request timeout in milliseconds. 3000 to 20000. Default: 9000."),
     },
   },
-  async ({ domain, domains, check_pricing }) => {
+  async ({ domain, domains, check_pricing, skipCache, request_timeout_ms }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -642,6 +778,8 @@ server.registerTool(
         domain: hasBatch ? undefined : domain,
         domains: hasBatch ? domains : undefined,
         check_pricing,
+        skipCache,
+        request_timeout_ms,
       }),
     );
   },
@@ -682,9 +820,28 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Add a blacklist check and a 0-100 health score by running the separate Domain Deliverability Checker actor, which bills its own per-domain rate on top of this one. Default false. SPF, DKIM and DMARC are read from DNS either way."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh analysis and ignore the 7 day result cache."),
+      max_sending_domain_probes: z
+        .number()
+        .int()
+        .optional()
+        .describe("Cap on how many candidate sending domains are probed per company. Lower it to bound run time on companies with many lookalike domains."),
+      request_timeout_ms: z
+        .number()
+        .int()
+        .optional()
+        .describe("Per-HTTP-request timeout in milliseconds."),
+      dns_timeout_ms: z
+        .number()
+        .int()
+        .optional()
+        .describe("Per-DNS-lookup timeout in milliseconds."),
     },
   },
-  async ({ domain, domains, scan_sending_domains, sending_domain_depth, check_deliverability }) => {
+  async ({ domain, domains, scan_sending_domains, sending_domain_depth, check_deliverability, skipCache, max_sending_domain_probes, request_timeout_ms, dns_timeout_ms }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -701,6 +858,10 @@ server.registerTool(
         scan_sending_domains,
         sending_domain_depth,
         check_deliverability,
+        skipCache,
+        max_sending_domain_probes,
+        request_timeout_ms,
+        dns_timeout_ms,
       }),
     );
   },
@@ -743,9 +904,28 @@ server.registerTool(
         .max(240000)
         .optional()
         .describe("Hard wall-clock ceiling per domain, default 75000. When nearly spent the crawl stops and the row is returned with partial_result true rather than timing out."),
+      skipCache: z
+        .boolean()
+        .optional()
+        .describe("Force a fresh crawl and ignore the 3 day result cache."),
+      page_concurrency: z
+        .number()
+        .int()
+        .optional()
+        .describe("How many pages are fetched concurrently within one domain."),
+      max_sitemap_fetches: z
+        .number()
+        .int()
+        .optional()
+        .describe("Cap on how many sitemap files are fetched per domain. Lower it to bound run time on deeply nested sitemap indexes."),
+      request_timeout_ms: z
+        .number()
+        .int()
+        .optional()
+        .describe("Per-HTTP-request timeout in milliseconds."),
     },
   },
-  async ({ domain, domains, max_pages_to_date, domain_time_budget_ms }) => {
+  async ({ domain, domains, max_pages_to_date, domain_time_budget_ms, skipCache, page_concurrency, max_sitemap_fetches, request_timeout_ms }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -761,6 +941,10 @@ server.registerTool(
         domains: hasBatch ? domains : undefined,
         max_pages_to_date,
         domain_time_budget_ms,
+        skipCache,
+        page_concurrency,
+        max_sitemap_fetches,
+        request_timeout_ms,
       }),
     );
   },
