@@ -36,38 +36,68 @@ function boolToString(v: boolean | undefined): string | undefined {
   return v === undefined ? undefined : v ? "true" : "false";
 }
 
-// Shared caller. actorPath is the actor's immutable Apify actor ID (a stable
-// 17-char key that survives Store renames). The /v2/acts/{id} endpoint accepts
-// it directly. We use IDs rather than the mambalabs~slug path so a Store rename
-// never breaks these calls.
+// How long the actor run itself is allowed to take, in seconds.
+//
+// MEASURED across the whole fleet, because this one caller fronts 21 actors
+// and a per-actor number would be 21 constants that drift. Over every SUCCEEDED
+// run in actor_runs on 2026-09-08, 5,088 of them carrying a duration: P95
+// 38.5 s, P99 171.3 s, slowest ever 1,010.7 s.
+//
+// The suite was calling run-sync-get-dataset-items?timeout=300, so every tool
+// it exposes was cut off at five minutes while the slowest run any of these
+// actors has completed takes nearly seventeen. 1800 s is 1.8 times that slowest
+// run and more than ten times the fleet P99, which is headroom for the slow
+// tools without letting a hung run bill indefinitely.
+//
+// The standalone job discovery wrapper moved to start-and-poll first and the
+// suite's copy of that tool did not, which is finding M-B4. This closes it for
+// all 21.
+const ACTOR_RUN_TIMEOUT_SECS = 1800;
+
+// How long this wrapper waits for that run, in milliseconds. The actor's own
+// timeout plus two minutes, so the run's own TIMED-OUT status is what the
+// caller sees rather than the wrapper giving up first and reporting nothing.
+const WRAPPER_WAIT_MS = (ACTOR_RUN_TIMEOUT_SECS + 120) * 1000;
+const POLL_INTERVAL_MS = 3000;
+
+const TERMINAL = new Set(["SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED", "ABORTING"]);
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Shared caller. actorPath is the actor's immutable Apify actor ID (a stable key
+// that survives Store renames). The /v2/acts/{id} endpoint accepts it directly,
+// so a Store rename never breaks these calls.
+//
+// START AND POLL, NOT RUN-SYNC. This wrapper used
+// run-sync-get-dataset-items?timeout=300 and cut off runs the actor completes:
+// runs that the actors complete. Raising that query parameter does not fix it,
+// which is worth stating
+// because it is the obvious fix and it is wrong. Apify's synchronous endpoints
+// carry a platform ceiling of 300 seconds on the HTTP wait itself and answer
+// 408 past it regardless of what `timeout` says. The only way for the wrapper
+// to wait as long as the actor needs is to start the run, poll it to a terminal
+// status, and then read the dataset.
+//
+// The token is read here rather than at module load, so the tool registers
+// unconditionally and a server started without APIFY_TOKEN still advertises its
+// capabilities instead of reporting none.
 async function runActor(
   actorPath: string,
   actorLabel: string,
   input: Record<string, unknown>,
 ): Promise<ToolResult> {
+  const APIFY_TOKEN = process.env.APIFY_TOKEN;
   if (!APIFY_TOKEN) {
     return { isError: true, content: [{ type: "text", text: "APIFY_TOKEN is not set. Create a token at https://console.apify.com/account/integrations and set it as the APIFY_TOKEN environment variable." }] };
   }
 
-  const url = `https://api.apify.com/v2/acts/${actorPath}/run-sync-get-dataset-items?timeout=300`;
+  const headers = {
+    Authorization: `Bearer ${APIFY_TOKEN}`,
+    "Content-Type": "application/json",
+    "User-Agent": USER_AGENT,
+  };
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${APIFY_TOKEN}`,
-        "Content-Type": "application/json",
-        "User-Agent": USER_AGENT,
-      },
-      body: JSON.stringify(input),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { isError: true, content: [{ type: "text", text: `Could not reach the Apify API: ${message}` }] };
-  }
-
-  if (!response.ok) {
+  const httpError = async (response: Response): Promise<string> => {
     let detail = "";
     try {
       const body = (await response.json()) as { error?: { message?: string } };
@@ -75,26 +105,113 @@ async function runActor(
     } catch {
       detail = "";
     }
-
-    let message: string;
     switch (response.status) {
+      case 400:
+        return `The ${actorLabel} run was rejected as invalid input.${detail}`;
       case 401:
-        message = "Invalid Apify token. Check your APIFY_TOKEN environment variable.";
-        break;
+        return "Invalid Apify token. Check your APIFY_TOKEN environment variable.";
       case 402:
-        message =
-          "Insufficient Apify credits. Check your account balance at https://console.apify.com/billing";
-        break;
-      case 408:
-        message = `The ${actorLabel} run timed out after 300 seconds. Try again, or run the actor on Apify directly for longer jobs.`;
-        break;
+        return "Insufficient Apify credits. Check your account balance at https://console.apify.com/billing";
       default:
-        message = `Apify request to ${actorLabel} failed with status ${response.status}.${detail}`;
+        return `Apify request to ${actorLabel} failed with status ${response.status}.${detail}`;
     }
-    return { isError: true, content: [{ type: "text", text: message }] };
+  };
+
+  // 1. Start the run.
+  let started: Response;
+  try {
+    started = await fetch(
+      `https://api.apify.com/v2/acts/${actorPath}/runs?timeout=${ACTOR_RUN_TIMEOUT_SECS}`,
+      { method: "POST", headers, body: JSON.stringify(input) },
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { isError: true, content: [{ type: "text", text: `Could not reach the Apify API: ${message}` }] };
+  }
+  if (!started.ok) {
+    return { isError: true, content: [{ type: "text", text: await httpError(started) }] };
   }
 
-  const items = await response.json();
+  let run: { id?: string; status?: string; defaultDatasetId?: string };
+  try {
+    run = ((await started.json()) as { data?: typeof run }).data ?? {};
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { isError: true, content: [{ type: "text", text: `The ${actorLabel} run start returned a response that could not be parsed: ${message}` }] };
+  }
+  const runId = run.id;
+  if (!runId) {
+    return { isError: true, content: [{ type: "text", text: `The ${actorLabel} run start returned no run id, so there is nothing to wait for.` }] };
+  }
+
+  // 2. Poll to a terminal status.
+  const deadline = Date.now() + WRAPPER_WAIT_MS;
+  let status = run.status ?? "READY";
+  let datasetId = run.defaultDatasetId;
+  while (!TERMINAL.has(status)) {
+    if (Date.now() >= deadline) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `The ${actorLabel} run ${runId} was still ${status} after ${Math.round(WRAPPER_WAIT_MS / 1000)} seconds and this call stopped waiting. The run itself is still on Apify: read it at https://console.apify.com/actors/runs/${runId}` }],
+      };
+    }
+    await sleep(POLL_INTERVAL_MS);
+    let poll: Response;
+    try {
+      poll = await fetch(`https://api.apify.com/v2/actor-runs/${runId}`, { headers });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { isError: true, content: [{ type: "text", text: `Lost contact with the Apify API while waiting for ${actorLabel} run ${runId}: ${message}` }] };
+    }
+    if (!poll.ok) {
+      return { isError: true, content: [{ type: "text", text: await httpError(poll) }] };
+    }
+    const body = (await poll.json()) as { data?: { status?: string; defaultDatasetId?: string } };
+    status = body.data?.status ?? status;
+    datasetId = body.data?.defaultDatasetId ?? datasetId;
+  }
+
+  // 3. A run that did not succeed is a failure the caller must see, never an
+  // empty success. Surfacing it here is what keeps a crashed run from reading
+  // as "no results found".
+  if (status !== "SUCCEEDED") {
+    return {
+      isError: true,
+      content: [{ type: "text", text: `The ${actorLabel} run did not succeed (run ID: ${runId}, status: ${status}).` }],
+    };
+  }
+  if (!datasetId) {
+    return { isError: true, content: [{ type: "text", text: `The ${actorLabel} run ${runId} succeeded but reported no dataset, so there is nothing to return.` }] };
+  }
+
+  // 4. Read the dataset.
+  let ds: Response;
+  try {
+    ds = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?format=json`, { headers });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { isError: true, content: [{ type: "text", text: `Could not read the ${actorLabel} dataset: ${message}` }] };
+  }
+  if (!ds.ok) {
+    return { isError: true, content: [{ type: "text", text: await httpError(ds) }] };
+  }
+
+  let items: unknown;
+  try {
+    items = await ds.json();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { isError: true, content: [{ type: "text", text: `The ${actorLabel} run returned a response that could not be parsed: ${message}` }] };
+  }
+
+  if (!Array.isArray(items)) {
+    const asObj = items as { error?: { type?: string; message?: string } };
+    const detail = asObj?.error?.message
+      ? `${asObj.error.message}`
+      : JSON.stringify(items);
+    return { isError: true, content: [{ type: "text", text: `The ${actorLabel} run did not return a dataset. ${detail}` }] };
+  }
+
   return { content: [{ type: "text", text: JSON.stringify(items, null, 2) }] };
 }
 
