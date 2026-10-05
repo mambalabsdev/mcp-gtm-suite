@@ -2,7 +2,7 @@
 
 [![Smithery](https://smithery.ai/badge/mambabuilt/mcp-gtm-suite)](https://smithery.ai/servers/mambabuilt/mcp-gtm-suite) [![Glama score](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite/badges/score.svg)](https://glama.ai/mcp/servers/mambalabsdev/mcp-gtm-suite) [![MCP Registry](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fregistry.modelcontextprotocol.io%2Fv0%2Fservers%3Fsearch%3Dcom.mambabuilt%252Fmcp-gtm-suite%26limit%3D1&query=%24.servers%5B0%5D._meta%5B%22io.modelcontextprotocol.registry%2Fofficial%22%5D.status&label=mcp%20registry&color=blue)](https://registry.modelcontextprotocol.io/v0/servers?search=com.mambabuilt/mcp-gtm-suite&limit=1) [![npm version](https://img.shields.io/npm/v/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![npm downloads](https://img.shields.io/npm/dm/@mambalabsdev/mcp-gtm-suite)](https://www.npmjs.com/package/@mambalabsdev/mcp-gtm-suite) [![license](https://img.shields.io/github/license/mambalabsdev/mcp-gtm-suite)](https://github.com/mambalabsdev/mcp-gtm-suite/blob/main/LICENSE) [![mcpservers.org](https://img.shields.io/badge/mcpservers.org-listed-blue)](https://mcpservers.org/servers/mambalabsdev/mcp-gtm-suite)
 
-One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single package and get all twenty one account-intelligence tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
+One MCP server that exposes the Mamba Labs GTM Suite. Install a single package and get all twenty one account-intelligence tools in your MCP client, each wrapping a Mamba Labs actor on Apify and returning Clay-ready flat JSON.
 
 ## What's Inside
 
@@ -11,6 +11,7 @@ One MCP server that exposes the entire Mamba Labs GTM Suite. Install a single pa
 - [Prerequisites](#prerequisites)
 - [Example prompts](#example-prompts)
 - [Tools and inputs](#tools-and-inputs)
+- [How each call runs](#how-each-call-runs)
 - [Full actor documentation](#full-actor-documentation)
 - [Mamba Labs GTM Suite](#mamba-labs-gtm-suite)
 - [License](#license)
@@ -93,23 +94,35 @@ Get your token at https://console.apify.com/account/integrations, paste it in, a
 
 ## Tools and inputs
 
-Each tool maps to one Apify actor. Inputs mirror the actor, minus deprecated and batch-only fields:
+Each tool maps to one Apify actor. Every input each tool accepts is listed below, generated from the server's own tool list. Where a tool marks nothing required, it still needs one identifier: the tool says which when you call it without one.
 
-- `resolve_company_identity`: at least one of `company_name`, `domain`, or `linkedin_url`, plus `skipCache`
-- `enrich_company_firmographics`: at least one of `domain` or `domains`, plus `company_name`, `batchSize`, `skipCache`
-- `map_company_social_presence`: `company_domain` or `company_name` (at least one), plus `platforms`, `includeFollowerCounts`, `skipCache`
-- `resolve_linkedin_url`: `company_domain` or `company_name` (at least one)
-- `scan_gtm_hiring_signals`: `domain` (required), `role_filter`, `ats_slug`
-- `detect_gtm_tech_stack`: `domain` (required), `crawl_additional_pages`
-- `scan_job_board_keywords`: `company_domain` (required), `role_categories` (required), `custom_keywords`, `enable_fallback`, `previous_roles_detected`, `previous_run_date`
-- `get_funding_press_signals`: `domain` (required), `company_name`
-- `get_company_changes`: `domain` (required), `company_name`
-- `aggregate_gtm_signals`: `company_domain` (required), `include_summary`, `explain_mode`
-- `score_icp_fit`: `company_domain` (required), plus `template`, `scoring_config`, `icp_description` (+ `llm_api_key`, `llm_provider`), `fetch_signals`, `include_explanation`
-- `detect_ai_tooling`: at least one of `domain` or `domains`, plus `check_pricing`
-- `fingerprint_outbound_infrastructure`: at least one of `domain` or `domains`, plus `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`
-- `track_publication_cadence`: at least one of `domain` or `domains`, plus `max_pages_to_date`, `domain_time_budget_ms`
-- `push_leads_to_sequencer`: `sequencer` and `campaign_id` (required), one of `leads` or `dataset_id`, plus `api_key`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`. **The only tool here that writes**: it adds leads to your campaign unless `dry_run` is true.
+- `scan_gtm_hiring_signals` (7 inputs): required `domain`; optional `role_filter`, `ats_slug`, `mode`, `include_role_details`, `previous_gtm_role_count`, `previous_run_date`
+- `detect_gtm_tech_stack` (5 inputs): optional `domain`, `company_domain`, `url`, `crawl_additional_pages`, `skipCache`
+- `aggregate_gtm_signals` (3 inputs): required `company_domain`; optional `include_summary`, `explain_mode`
+- `scan_job_board_keywords` (6 inputs): required `company_domain`, `role_categories`; optional `custom_keywords`, `enable_fallback`, `previous_roles_detected`, `previous_run_date`
+- `resolve_linkedin_url` (4 inputs): optional `company_domain`, `company_name`, `includeFirmographics`, `skipCache`
+- `score_icp_fit` (43 inputs): required `company_domain`; optional `company_name`, `template`, `scoring_config`, `icp_description`, `llm_api_key`, `llm_provider`, `fetch_signals`, `include_explanation`, `tier_thresholds`, `funded_within_days`, `min_score_to_output`, `previous_score`, `gtm_hiring_signal`, `gtm_role_count`, `uses_hubspot`, `uses_salesforce`, `uses_clay`, `crm_detected`, `seq_tool_detected`, `tech_stack`, `headcount`, `headcount_min`, `headcount_max`, `headcount_in_range`, `employee_band`, `revenue_estimate`, `hq_location`, `founded_year`, `recently_funded`, `last_funding_date`, `latest_funding_date`, `latest_funding_amount`, `funding_stage`, `industry`, `industry_match`, `target_industries`, `social_platforms_found`, `total_followers`, `has_linkedin`, `has_twitter`, `job_count`, `keyword_match_count`
+- `resolve_company_identity` (4 inputs): optional `company_name`, `domain`, `linkedin_url`, `skipCache`
+- `enrich_company_firmographics` (5 inputs): optional `domain`, `company_name`, `domains`, `batchSize`, `skipCache`
+- `map_company_social_presence` (5 inputs): optional `company_domain`, `company_name`, `platforms`, `includeFollowerCounts`, `skipCache`
+- `get_funding_press_signals` (2 inputs): required `domain`; optional `company_name`
+- `get_company_changes` (4 inputs): required `domain`; optional `company_name`, `previous_snapshot`, `sub_actor_timeout_secs`
+- `detect_ai_tooling` (5 inputs): optional `domain`, `domains`, `check_pricing`, `skipCache`, `request_timeout_ms`
+- `fingerprint_outbound_infrastructure` (9 inputs): optional `domain`, `domains`, `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`, `skipCache`, `max_sending_domain_probes`, `request_timeout_ms`, `dns_timeout_ms`
+- `track_publication_cadence` (8 inputs): optional `domain`, `domains`, `max_pages_to_date`, `domain_time_budget_ms`, `skipCache`, `page_concurrency`, `max_sitemap_fetches`, `request_timeout_ms`
+- `push_leads_to_sequencer` (10 inputs): required `sequencer`, `campaign_id`; optional `api_key`, `leads`, `dataset_id`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`
+- `audit_agent_accessibility` (4 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`
+- `classify_contact` (8 inputs): required `job_title`; optional `full_name`, `company_domain`, `verify_position`, `use_llm_fallback`, `llm_provider`, `llm_model`, `skipCache`
+- `map_company_event_presence` (6 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`
+- `resolve_legal_entity` (6 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`
+- `monitor_public_awards` (7 inputs): required `register`; optional `window_days`, `min_award_value`, `max_entities`, `exclude_government_recipients`, `resolve_domains`, `domain_confidence_floor`
+- `capture_linkedin_posts_and_commenters` (7 inputs): optional `profile_urls`, `company_urls`, `posted_since`, `collect_commenters`, `collect_reactors`, `max_engagers_per_post`, `use_residential_proxy`
+
+`push_leads_to_sequencer` is the only tool here that writes: it adds leads to your campaign unless `dry_run` is true.
+
+## How each call runs
+
+Each call starts the actor run, polls it until it finishes, then reads the dataset. A run is allowed 1,800 seconds. If the run is still going when this call stops waiting, the call returns the run id and a console link instead of a timeout, so the result is never lost.
 
 ## Full actor documentation
 
@@ -121,32 +134,35 @@ https://apify.com/mambalabs
 
 ## Mamba Labs GTM Suite
 
-This is the umbrella server for the **Mamba Labs GTM Suite**, an account-intelligence fleet of twenty one tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server.
+This is the umbrella server for the **Mamba Labs GTM Suite**: twenty one account-intelligence tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server. The Mamba Labs fleet has 53 public actors; the brand presence mappers, the influencer suite, Expert Witness Directory, and the other actors outside this list are available as their own servers under [@mambalabsdev on npm](https://www.npmjs.com/org/mambalabsdev).
 
 | Tool | Actor | Immutable Actor ID |
 |---|---|---|
-| `resolve_company_identity` | [Company Identity Resolver](https://console.apify.com/actors/lr8fTRAmZCBZmuwwh) | `lr8fTRAmZCBZmuwwh` |
-| `enrich_company_firmographics` | [Company Firmographic Enricher](https://console.apify.com/actors/YlUtLWjfPpqykmB8g) | `YlUtLWjfPpqykmB8g` |
-| `map_company_social_presence` | [Company Social Presence Mapper](https://console.apify.com/actors/4k6CCemkgBDz18m2h) | `4k6CCemkgBDz18m2h` |
-| `resolve_linkedin_url` | [Domain to LinkedIn URL Resolver](https://console.apify.com/actors/3HtnSaqPHOg1Qg5gx) | `3HtnSaqPHOg1Qg5gx` |
-| `scan_gtm_hiring_signals` | [GTM Hiring Signal Scraper](https://console.apify.com/actors/D7O1SA2EqwHGsGr1P) | `D7O1SA2EqwHGsGr1P` |
-| `detect_gtm_tech_stack` | [GTM Tech Stack Signal Enrichment](https://console.apify.com/actors/qyd7nNyqFPelQViBx) | `qyd7nNyqFPelQViBx` |
-| `scan_job_board_keywords` | [Job Board Keyword Signal Scanner](https://console.apify.com/actors/4DvqpvhMR74NLcDDY) | `4DvqpvhMR74NLcDDY` |
-| `get_funding_press_signals` | [Funding & Press Signal Scanner](https://console.apify.com/actors/FS13X6dhQVgX3XOM6) | `FS13X6dhQVgX3XOM6` |
-| `get_company_changes` | [Company Change-Event Feed](https://console.apify.com/actors/oX44rS0fkEJ3rXLWe) | `oX44rS0fkEJ3rXLWe` |
-| `aggregate_gtm_signals` | [GTM Signals Aggregator](https://console.apify.com/actors/xKdRfnfFNkdMpFuNs) | `xKdRfnfFNkdMpFuNs` |
-| `score_icp_fit` | [ICP Fit Scorer](https://console.apify.com/actors/W161DT8W4kW55dMFh) | `W161DT8W4kW55dMFh` |
-| `push_leads_to_sequencer` | [Sequencer Lead Push](https://console.apify.com/actors/0Jv27VeWM5tSZQs9x) | `0Jv27VeWM5tSZQs9x` |
-| `audit_agent_accessibility` | [Agent Accessibility Auditor](https://console.apify.com/actors/anxbRv0lKrpQ1pnua) | `anxbRv0lKrpQ1pnua` |
-| `classify_contact` | [Contact Classifier](https://console.apify.com/actors/0lGSeYJmniXhGANnO) | `0lGSeYJmniXhGANnO` |
-| `map_company_event_presence` | [Event Presence Index](https://console.apify.com/actors/WLhMy8fMDgsxdYxv5) | `WLhMy8fMDgsxdYxv5` |
-| `resolve_legal_entity` | [Legal Entity Resolver](https://console.apify.com/actors/KHFyPCDIx7CyqULYm) | `KHFyPCDIx7CyqULYm` |
-| `monitor_public_awards` | [Government Contract Award Monitor](https://console.apify.com/actors/zhEtllASykOcx9hJ8) | `zhEtllASykOcx9hJ8` |
-| `capture_linkedin_posts_and_commenters` | [LinkedIn Post Tracker and Comment Capture](https://console.apify.com/actors/oiGLNPuaf5BRaz9K5) | `oiGLNPuaf5BRaz9K5` |
+| `scan_gtm_hiring_signals` | [GTM Hiring Signal Scraper](https://apify.com/mambalabs/gtm-hiring-signal-scraper) | `D7O1SA2EqwHGsGr1P` |
+| `detect_gtm_tech_stack` | [Tech Stack Signal Detector](https://apify.com/mambalabs/gtm-tech-stack-signal-scraper) | `qyd7nNyqFPelQViBx` |
+| `aggregate_gtm_signals` | [GTM Signals Aggregator](https://apify.com/mambalabs/b2b-buying-signals-hiring-tech-stack-intent-for-clay) | `xKdRfnfFNkdMpFuNs` |
+| `scan_job_board_keywords` | [Job Board Keyword Signal Scanner](https://apify.com/mambalabs/job-board-keyword-signal-scanner) | `4DvqpvhMR74NLcDDY` |
+| `resolve_linkedin_url` | [Domain to LinkedIn URL Resolver](https://apify.com/mambalabs/domain-to-linkedin-url-resolver) | `3HtnSaqPHOg1Qg5gx` |
+| `score_icp_fit` | [ICP Fit Scorer](https://apify.com/mambalabs/icp-account-lead-scoring-fit-scorer-0-100-for-clay) | `W161DT8W4kW55dMFh` |
+| `resolve_company_identity` | [Company Identity Resolver](https://apify.com/mambalabs/company-identity-resolver) | `lr8fTRAmZCBZmuwwh` |
+| `enrich_company_firmographics` | [Company Firmographic Enricher](https://apify.com/mambalabs/company-firmographic-enricher) | `YlUtLWjfPpqykmB8g` |
+| `map_company_social_presence` | [Company Social Presence Mapper](https://apify.com/mambalabs/company-social-presence-mapper) | `4k6CCemkgBDz18m2h` |
+| `get_funding_press_signals` | [Funding and Press Signal Scanner](https://apify.com/mambalabs/funding-press-signal-scanner) | `FS13X6dhQVgX3XOM6` |
+| `get_company_changes` | [Company Change Event Feed](https://apify.com/mambalabs/company-change-event-feed) | `oX44rS0fkEJ3rXLWe` |
+| `detect_ai_tooling` | [AI Tooling Detector](https://apify.com/mambalabs/ai-tooling-detector) | `EwkHhmqiuJgRoVEbE` |
+| `fingerprint_outbound_infrastructure` | [Outbound Stack Detector](https://apify.com/mambalabs/outbound-infrastructure-fingerprint) | `v43UJC8r7qW7cBSTG` |
+| `track_publication_cadence` | [Publishing Frequency Tracker](https://apify.com/mambalabs/blog-publishing-frequency) | `TbLwaUUATdYb6wp4N` |
+| `push_leads_to_sequencer` | [Sequencer Lead Push](https://apify.com/mambalabs/clay-to-instantly-smartlead-push) | `0Jv27VeWM5tSZQs9x` |
+| `audit_agent_accessibility` | [Agent Accessibility Auditor](https://apify.com/mambalabs/agent-accessibility-auditor) | `anxbRv0lKrpQ1pnua` |
+| `classify_contact` | [Contact Classifier](https://apify.com/mambalabs/contact-classifier) | `0lGSeYJmniXhGANnO` |
+| `map_company_event_presence` | [Event Presence Index](https://apify.com/mambalabs/event-presence-index) | `WLhMy8fMDgsxdYxv5` |
+| `resolve_legal_entity` | [Legal Entity Resolver](https://apify.com/mambalabs/legal-entity-resolver) | `KHFyPCDIx7CyqULYm` |
+| `monitor_public_awards` | [Government Contract Award Monitor](https://apify.com/mambalabs/public-award-monitor) | `zhEtllASykOcx9hJ8` |
+| `capture_linkedin_posts_and_commenters` | [LinkedIn Post Tracker](https://apify.com/mambalabs/linkedin-post-engager-capture) | `oiGLNPuaf5BRaz9K5` |
 
-> The [Domain Deliverability Checker](https://console.apify.com/actors/0tVgxI7A6o9jMlxmc) actor is published as a standalone MCP server but is intentionally not bundled here: it audits email-sending infrastructure (SPF, DKIM, DMARC, blacklists) rather than account intelligence, so it sits outside this suite's scope.
+> The [Domain Deliverability Checker](https://apify.com/mambalabs/domain-deliverability-checker) actor is published as a standalone MCP server but is intentionally not bundled here: it audits email-sending infrastructure (SPF, DKIM, DMARC, blacklists) rather than account intelligence, so it sits outside this suite's scope.
 
-> Built by [Mamba Labs](https://github.com/mambalabsdev) | [npm](https://www.npmjs.com/org/mambalabsdev) | [Apify Store](https://apify.com/mambabuilt)
+> Built by [Mamba Labs](https://github.com/mambalabsdev) | [npm](https://www.npmjs.com/org/mambalabsdev) | [Apify Store](https://apify.com/mambalabs) | [mambabuilt.com](https://mambabuilt.com)
 
 ## License
 
