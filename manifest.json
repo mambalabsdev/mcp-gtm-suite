@@ -1,8 +1,8 @@
 {
   "manifest_version": "0.3",
   "name": "mcp-gtm-suite",
-  "version": "1.4.0",
-  "description": "The full Mamba Labs GTM Suite in one MCP server: 11 account-intelligence tools spanning the go-to-market workflow. Resolve company identity, enrich firmographics, map social presence, resolve LinkedIn URLs; detect hiring, tech-stack, job-board, funding/press, and change-event signals; aggregate them and score ICP fit. Each tool wraps a Mamba Labs Apify actor and returns flat, Clay-ready JSON.",
+  "version": "1.9.0",
+  "description": "The full Mamba Labs GTM Suite in one MCP server: 21 account-intelligence tools spanning the go-to-market workflow. Resolve company identity, enrich firmographics, map social presence, resolve LinkedIn URLs; detect hiring, tech-stack, job-board, funding/press, change-event, AI tooling, outbound infrastructure, publishing cadence, event, and award signals; classify contacts, resolve legal entities, audit agent accessibility, capture LinkedIn posts, push leads to a sequencer, aggregate signals, and score ICP fit. Each tool wraps a Mamba Labs Apify actor and returns flat, Clay-ready JSON.",
   "author": {
     "name": "Mamba Labs"
   },

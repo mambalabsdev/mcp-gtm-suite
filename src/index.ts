@@ -58,7 +58,9 @@ const ACTOR_RUN_TIMEOUT_SECS = 1800;
 // timeout plus two minutes, so the run's own TIMED-OUT status is what the
 // caller sees rather than the wrapper giving up first and reporting nothing.
 const WRAPPER_WAIT_MS = (ACTOR_RUN_TIMEOUT_SECS + 120) * 1000;
-const POLL_INTERVAL_MS = 3000;
+// MAMBA_MCP_POLL_INTERVAL_MS exists for the test suite, which drives the poll
+// loop against a mocked Apify API. Callers never need to set it.
+const POLL_INTERVAL_MS = Number(process.env.MAMBA_MCP_POLL_INTERVAL_MS) || 3000;
 
 const TERMINAL = new Set(["SUCCEEDED", "FAILED", "TIMED-OUT", "ABORTED", "ABORTING"]);
 
@@ -226,7 +228,7 @@ server.registerTool(
   {
     title: "Scan GTM Hiring Signals",
     description:
-      "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row. Use this for a go-to-market hiring verdict (is the company building its sales and marketing team, and how fast); use scan_job_board_keywords instead to count open roles in categories or keywords you choose, including non-GTM roles. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Scan GTM Hiring Signals",
       readOnlyHint: true,
@@ -363,7 +365,7 @@ server.registerTool(
   {
     title: "Scan Job Board Keywords",
     description:
-      "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row. Use this when you choose the role categories or keywords (engineering, finance, a product name in a job ad); use scan_gtm_hiring_signals instead for the fixed sales and marketing hiring verdict. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Scan Job Board Keywords",
       readOnlyHint: true,
@@ -419,7 +421,7 @@ server.registerTool(
   {
     title: "Resolve LinkedIn URL",
     description:
-      "Resolve a company domain or name to its LinkedIn company URL with a confidence score, firmographics, and social links as a flat, Clay-ready JSON row. Provide at least one of company_domain or company_name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve a company domain or name to its LinkedIn company URL with a confidence score, firmographics, and social links as a flat, Clay-ready JSON row. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve LinkedIn URL",
       readOnlyHint: true,
@@ -588,7 +590,7 @@ server.registerTool(
   {
     title: "Resolve Company Identity",
     description:
-      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. Provide at least one of company_name, domain, or linkedin_url. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. Provide at least one of company_name, domain, or linkedin_url. Use this to reconcile or deduplicate records you already hold; use resolve_linkedin_url instead when you only need the LinkedIn company URL for a domain or name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve Company Identity",
       readOnlyHint: true,

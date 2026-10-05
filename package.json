@@ -1,7 +1,7 @@
 {
   "name": "@mambalabsdev/mcp-gtm-suite",
   "version": "1.9.0",
-  "description": "MCP server for the full Mamba Labs GTM Suite. One server exposing eleven account-intelligence actors on Apify as tools: identity, firmographics, social presence, hiring, tech stack, job boards, funding, change feed, LinkedIn, signals and ICP scoring.",
+  "description": "MCP server for the Mamba Labs GTM Suite. One server exposing twenty one account-intelligence actors on Apify as tools: identity, firmographics, social presence, hiring, tech stack, job boards, funding, change feed, LinkedIn, signals, ICP scoring, and more.",
   "type": "module",
   "bin": {
     "mcp-gtm-suite": "./build/index.js"
@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "build": "tsc && chmod +x build/index.js",
+    "test": "npm run build && node --test test/*.test.js",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
