@@ -53,7 +53,7 @@ This server gives an AI client twenty one account-intelligence tools in one plac
 - `audit_agent_accessibility`: whether an AI agent can read a site, and what the site's policy says about it
 - `map_company_event_presence`: the third-party conferences a company publicly says it attends
 - `monitor_public_awards`: the companies that won work in a public award register, one row per winner
-- `capture_linkedin_posts_and_commenters`: recent LinkedIn posts from profiles and company pages, with the commenters LinkedIn shows publicly, and no login
+- `capture_linkedin_posts_and_commenters`: the LinkedIn posts a search engine has indexed for profiles and company pages, with no request to LinkedIn (commenters removed 2026-10-12)
 
 All of the work runs on Apify. This package is a thin client that routes each tool call to the right actor and hands back the result.
 
@@ -116,7 +116,7 @@ Each tool maps to one Apify actor. Every input each tool accepts is listed below
 - `map_company_event_presence` (6 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`
 - `resolve_legal_entity` (6 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`
 - `monitor_public_awards` (7 inputs): required `register`; optional `window_days`, `min_award_value`, `max_entities`, `exclude_government_recipients`, `resolve_domains`, `domain_confidence_floor`
-- `capture_linkedin_posts_and_commenters` (7 inputs): optional `profile_urls`, `company_urls`, `posted_since`, `collect_commenters`, `collect_reactors`, `max_engagers_per_post`, `use_residential_proxy`
+- `capture_linkedin_posts_and_commenters` (3 inputs): optional `profile_urls`, `company_urls`, `posted_since`.
 
 `push_leads_to_sequencer` is the only tool here that writes: it adds leads to your campaign unless `dry_run` is true.
 

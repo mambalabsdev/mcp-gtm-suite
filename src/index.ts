@@ -421,7 +421,7 @@ server.registerTool(
   {
     title: "Resolve LinkedIn URL",
     description:
-      "Resolve a company domain or name to its LinkedIn company URL, read from public search results, with a confidence score, social links, and optional firmographics from search snippets, as a flat, Clay-ready JSON row. No request is sent to LinkedIn. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve a company domain or name to its LinkedIn company URL, with a 0-100 confidence_score, social links, and optional firmographics from search snippets, as a flat, Clay-ready JSON row. A URL is returned only when verified: the company homepage links it, or its name is identical to the name the company site declares or the company_name you pass; otherwise linkedin_company_url is null and verification says why. No request is sent to LinkedIn. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve LinkedIn URL",
       readOnlyHint: true,
@@ -590,7 +590,7 @@ server.registerTool(
   {
     title: "Resolve Company Identity",
     description:
-      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. Provide at least one of company_name, domain, or linkedin_url. Use this to reconcile or deduplicate records you already hold; use resolve_linkedin_url instead when you only need the LinkedIn company URL for a domain or name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. A LinkedIn URL the actor finds is returned only when verified against the company site or the name, with the reason in linkedin_verification. Provide at least one of company_name, domain, or linkedin_url. Use this to reconcile or deduplicate records you already hold; use resolve_linkedin_url instead when you only need the LinkedIn company URL for a domain or name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve Company Identity",
       readOnlyHint: true,
@@ -1300,7 +1300,7 @@ server.registerTool(
 );
 
 
-// 21. LinkedIn Post Tracker and Comment Capture, added 2026-08-12 when the
+// 21. LinkedIn Post Tracker (tool name kept from when it captured commenters), added 2026-08-12 when the
 // actor went public and was onboarded into the audited fleet. Definition copied
 // verbatim from the standalone wrapper so the two cannot describe it
 // differently.
@@ -1309,7 +1309,7 @@ server.registerTool(
   {
     title: "Capture LinkedIn Posts and Commenters",
     description:
-      "Point it at LinkedIn person profiles or company pages and it returns their recent posts as flat rows, with the real reaction and comment counts on every one, plus the commenters LinkedIn shows publicly. No cookies, no LinkedIn account, no credentials of any kind. One dataset carries three row types told apart by row_type: post, engager and notice, so filter on row_type before loading a table. post_id is the numeric activity URN and is stable across runs and across both permalink spellings, which makes it safe as a primary key and as a have-I-already-seen-this check. Read the limits before relying on the commenters: LinkedIn renders about ten top-level comments to a logged-out visitor whatever the real total, measured whole-run coverage was 3.7 percent, and roughly 30 percent of comment rows carry no timestamp. Reactor identities are not served to a logged-out visitor at all, so every post row carries the real reaction_count and reactors_status says unavailable_without_login. Every row carries degraded and degradation_reason: filter on degraded before you trust an absence. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
+      "Point it at LinkedIn person profiles or company pages and it returns the posts a search engine has indexed for each one, as flat rows: permalink, author, a text excerpt, and the publish date decoded from the post id. No request is sent to LinkedIn and no cookie or account is used. A result counts only when its permalink names the source, so posts are never attributed to the wrong author. Coverage is what the search index holds: posts appear days or weeks after publishing and many never appear. Commenters, reaction counts, comment counts and media are no longer returned (removed 2026-10-12, they came only from LinkedIn pages). Rows carry row_type post or notice; filter on row_type before loading a table. post_id is the activity URN and is stable across runs. Every row carries degraded and degradation_reason. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Capture LinkedIn Posts and Commenters",
       readOnlyHint: true,
@@ -1318,17 +1318,13 @@ server.registerTool(
       openWorldHint: true,
     },
     inputSchema: {
-    profile_urls: z.array(z.string()).optional().describe("LinkedIn person profile URLs whose recent posts you want, for example https://www.linkedin.com/in/williamhgates. Country subdomains such as uk.linkedin.com are fine. Supply this, company_urls, or both."),
-    company_urls: z.array(z.string()).optional().describe("LinkedIn company page URLs whose recent posts you want, for example https://www.linkedin.com/company/microsoft. Supply this, profile_urls, or both."),
-    posted_since: z.string().optional().describe("ISO date or timestamp, for example 2026-08-01. Posts published before this are skipped BEFORE anything is charged, so a scheduled run that finds nothing new costs the actor start and nothing else. Leave empty to take everything the page advertises."),
-    collect_commenters: z.boolean().optional().describe("Return one row per person who commented, with name, profile URL, comment text and comment likes. Turn it off to collect posts only, in which case commenters_collected comes back null rather than 0, because the actor did not look. Default: true."),
-    collect_reactors: z.boolean().optional().describe("LinkedIn serves no reactor identities to a logged-out visitor, so this returns no reaction rows whatever you set. It exists so the limit is visible rather than silent, and it adds one notice row per run. Set it to false to suppress that row. Default: true."),
-    max_engagers_per_post: z.number().int().min(0).max(100).optional().describe("Caps the engager rows charged per post. LinkedIn shows about ten comments to a logged-out visitor, so ten is the platform ceiling and raising this above ten does nothing. Set it to 0 to pay for posts only. Default: 10."),
-    use_residential_proxy: z.boolean().optional().describe("Off by default, which is what the pricing assumes and what was measured. Turn it on only if LinkedIn starts refusing the platform's datacenter addresses. Apify bills residential bandwidth on top of this actor's events. Default: false."),
+    profile_urls: z.array(z.string()).optional().describe("LinkedIn person profile URLs, for example https://www.linkedin.com/in/williamhgates. Country subdomains such as uk.linkedin.com are fine. Supply this, company_urls, or both."),
+    company_urls: z.array(z.string()).optional().describe("LinkedIn company page URLs, for example https://www.linkedin.com/company/microsoft. Supply this, profile_urls, or both."),
+    posted_since: z.string().optional().describe("ISO date or timestamp, for example 2026-08-01. Posts published before this are skipped BEFORE anything is charged. Leave empty to take everything the index holds."),
     },
   },
   async (args) =>
-    runActor("oiGLNPuaf5BRaz9K5", "LinkedIn Post Tracker and Comment Capture", compact(args as Record<string, unknown>)),
+    runActor("oiGLNPuaf5BRaz9K5", "LinkedIn Post Tracker", compact(args as Record<string, unknown>)),
 );
 
 const transport = new StdioServerTransport();
