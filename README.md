@@ -33,14 +33,14 @@ This server gives an AI client twenty one account-intelligence tools in one plac
 - `detect_gtm_tech_stack`: detect CRM, sequencer, and marketing automation tools
 - `scan_job_board_keywords`: scan job boards for roles in any category
 - `get_funding_press_signals`: scan news and PR wires for funding, exec moves, launches, and acquisitions
-- `get_company_changes`: monitor a domain and return only what changed since the last run
+- `get_company_changes`: monitor a domain and return only what changed since the last run; choose the sources to watch and a severity floor
 - `detect_ai_tooling`: determine whether a company declares, deploys, or charges for AI
 - `fingerprint_outbound_infrastructure`: determine whether a company runs cold outbound, on what stack, and from which lookalike sending domains
 - `track_publication_cadence`: how much long-form work a company publishes per month, and whether that rate is rising or falling
 
 **Scoring**
 
-- `aggregate_gtm_signals`: combine hiring and tech-stack signals into one composite score
+- `aggregate_gtm_signals`: combine hiring and tech-stack signals, plus funding, events, or workplace on request, into one composite score
 - `score_icp_fit`: score a company against your ideal customer profile
 
 **Entity and record resolution**
@@ -97,21 +97,21 @@ Get your token at https://console.apify.com/account/integrations, paste it in, a
 Each tool maps to one Apify actor. Every input each tool accepts is listed below, generated from the server's own tool list. Where a tool marks nothing required, it still needs one identifier: the tool says which when you call it without one.
 
 - `scan_gtm_hiring_signals` (7 inputs): required `domain`; optional `role_filter`, `ats_slug`, `mode`, `include_role_details`, `previous_gtm_role_count`, `previous_run_date`
-- `detect_gtm_tech_stack` (5 inputs): optional `domain`, `company_domain`, `url`, `crawl_additional_pages`, `skipCache`
-- `aggregate_gtm_signals` (3 inputs): required `company_domain`; optional `include_summary`, `explain_mode`
+- `detect_gtm_tech_stack` (6 inputs): optional `domain`, `company_domain`, `url`, `crawl_additional_pages`, `skipCache`, `technologies`
+- `aggregate_gtm_signals` (4 inputs): required `company_domain`; optional `include_summary`, `explain_mode`, `sources`
 - `scan_job_board_keywords` (6 inputs): required `company_domain`, `role_categories`; optional `custom_keywords`, `enable_fallback`, `previous_roles_detected`, `previous_run_date`
-- `resolve_linkedin_url` (4 inputs): optional `company_domain`, `company_name`, `includeFirmographics`, `skipCache`
+- `resolve_linkedin_url` (5 inputs): optional `company_domain`, `company_name`, `includeFirmographics`, `skipCache`, `minConfidenceScore`
 - `score_icp_fit` (43 inputs): required `company_domain`; optional `company_name`, `template`, `scoring_config`, `icp_description`, `llm_api_key`, `llm_provider`, `fetch_signals`, `include_explanation`, `tier_thresholds`, `funded_within_days`, `min_score_to_output`, `previous_score`, `gtm_hiring_signal`, `gtm_role_count`, `uses_hubspot`, `uses_salesforce`, `uses_clay`, `crm_detected`, `seq_tool_detected`, `tech_stack`, `headcount`, `headcount_min`, `headcount_max`, `headcount_in_range`, `employee_band`, `revenue_estimate`, `hq_location`, `founded_year`, `recently_funded`, `last_funding_date`, `latest_funding_date`, `latest_funding_amount`, `funding_stage`, `industry`, `industry_match`, `target_industries`, `social_platforms_found`, `total_followers`, `has_linkedin`, `has_twitter`, `job_count`, `keyword_match_count`
-- `resolve_company_identity` (4 inputs): optional `company_name`, `domain`, `linkedin_url`, `skipCache`
+- `resolve_company_identity` (5 inputs): optional `company_name`, `domain`, `linkedin_url`, `skipCache`, `minLinkedinConfidence`
 - `enrich_company_firmographics` (5 inputs): optional `domain`, `company_name`, `domains`, `batchSize`, `skipCache`
 - `map_company_social_presence` (5 inputs): optional `company_domain`, `company_name`, `platforms`, `includeFollowerCounts`, `skipCache`
-- `get_funding_press_signals` (2 inputs): required `domain`; optional `company_name`
-- `get_company_changes` (4 inputs): required `domain`; optional `company_name`, `previous_snapshot`, `sub_actor_timeout_secs`
-- `detect_ai_tooling` (5 inputs): optional `domain`, `domains`, `check_pricing`, `skipCache`, `request_timeout_ms`
+- `get_funding_press_signals` (4 inputs): required `domain`; optional `company_name`, `signal_types`, `lookback_days`
+- `get_company_changes` (6 inputs): required `domain`; optional `company_name`, `previous_snapshot`, `sub_actor_timeout_secs`, `sources`, `min_severity`
+- `detect_ai_tooling` (6 inputs): optional `domain`, `domains`, `check_pricing`, `skipCache`, `request_timeout_ms`, `vendors`
 - `fingerprint_outbound_infrastructure` (9 inputs): optional `domain`, `domains`, `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`, `skipCache`, `max_sending_domain_probes`, `request_timeout_ms`, `dns_timeout_ms`
 - `track_publication_cadence` (8 inputs): optional `domain`, `domains`, `max_pages_to_date`, `domain_time_budget_ms`, `skipCache`, `page_concurrency`, `max_sitemap_fetches`, `request_timeout_ms`
 - `push_leads_to_sequencer` (10 inputs): required `sequencer`, `campaign_id`; optional `api_key`, `leads`, `dataset_id`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`
-- `audit_agent_accessibility` (4 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`
+- `audit_agent_accessibility` (5 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`, `checks`
 - `classify_contact` (8 inputs): required `job_title`; optional `full_name`, `company_domain`, `verify_position`, `use_llm_fallback`, `llm_provider`, `llm_model`, `skipCache`
 - `map_company_event_presence` (6 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`
 - `resolve_legal_entity` (6 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`

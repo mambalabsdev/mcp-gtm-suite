@@ -15,6 +15,7 @@ globalThis.fetch = async (url, init = {}) => {
   if (LOG) appendFileSync(LOG, `${method} ${u}\n`);
   if (u.includes("run-sync")) return json(408, { error: { message: "run-sync must not be called" } });
   if (method === "POST" && /\/v2\/acts\/[^/]+\/runs\?/.test(u)) {
+    if (process.env.MOCK_BODY_LOG) appendFileSync(process.env.MOCK_BODY_LOG, (init.body || "{}") + "\n");
     return json(201, { data: { id: "mockRun1", status: "RUNNING", defaultDatasetId: "mockDs1" } });
   }
   if (method === "GET" && u.includes("/v2/actor-runs/mockRun1")) {

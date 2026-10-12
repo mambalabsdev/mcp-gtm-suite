@@ -308,9 +308,13 @@ server.registerTool(
       .boolean()
       .optional()
       .describe("By default a clean detection is cached for 7 days and reused. Set true to force a fresh detection."),
+    technologies: z
+      .array(z.enum(["hubspot", "salesforce", "marketo", "pardot", "intercom", "drift", "apollo", "outreach", "gong", "zoominfo"]))
+      .optional()
+      .describe("Report only these tools. Omit to report every detectable tool. Only tools with a client side fingerprint are selectable. Detection is unchanged, so filtering costs nothing extra."),
   },
   },
-  async ({ domain, company_domain, url, crawl_additional_pages, skipCache }) => {
+  async ({ domain, company_domain, url, crawl_additional_pages, skipCache, technologies }) => {
     // Measured 2026-08-13: the actor's built schema marks nothing required, but
     // with no company named at all the run throws and exits FAILED. Rejecting
     // here rejects only what the actor itself rejects.
@@ -323,7 +327,7 @@ server.registerTool(
     return runActor(
       "qyd7nNyqFPelQViBx",
       "GTM Tech Stack Signal Enrichment",
-      compact({ domain, company_domain, url, crawl_additional_pages, skipCache }),
+      compact({ domain, company_domain, url, crawl_additional_pages, skipCache, technologies }),
     );
   },
 );
@@ -334,7 +338,7 @@ server.registerTool(
   {
     title: "Aggregate GTM Signals",
     description:
-      "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection by default, plus funding, events, or workplace when named in sources, in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Aggregate GTM Signals",
       readOnlyHint: true,
@@ -349,13 +353,17 @@ server.registerTool(
       .boolean()
       .optional()
       .describe("If true, the summary becomes a longer, more detailed explanation."),
+    sources: z
+      .array(z.enum(["hiring", "tech_stack", "funding", "events", "workplace"]))
+      .optional()
+      .describe("Which signals to aggregate. Defaults to hiring and tech_stack. Each extra source adds one sub actor run to the bill and one dimension to the composite score, which is normalized over the sources selected."),
   },
   },
-  async ({ company_domain, include_summary, explain_mode }) =>
+  async ({ company_domain, include_summary, explain_mode, sources }) =>
     runActor(
       "xKdRfnfFNkdMpFuNs",
       "GTM Signals Aggregator",
-      compact({ company_domain, include_summary, explain_mode }),
+      compact({ company_domain, include_summary, explain_mode, sources }),
     ),
 );
 
@@ -443,9 +451,14 @@ server.registerTool(
       .enum(["false", "true"])
       .optional()
       .describe("When \"false\", the default, a successful resolution is cached for 7 days and reused. Set \"true\" to force a fresh resolution. Sent as a string for Clay compatibility."),
+    minConfidenceScore: z
+      .string()
+      .regex(/^\s*(100|[1-9]?[0-9])?\s*$/)
+      .optional()
+      .describe("A LinkedIn page is returned only when its match score is at least this value, 0 to 100. Default \"70\". Raise it for fewer, surer answers; lower it for more answers and more wrong ones. Sent as a string for Clay compatibility."),
   },
   },
-  async ({ company_domain, company_name, includeFirmographics, skipCache }) => {
+  async ({ company_domain, company_name, includeFirmographics, skipCache, minConfidenceScore }) => {
     if (
       (company_domain === undefined || company_domain === "") &&
       (company_name === undefined || company_name === "")
@@ -458,7 +471,7 @@ server.registerTool(
     return runActor(
       "3HtnSaqPHOg1Qg5gx",
       "Domain to LinkedIn URL Resolver",
-      compact({ company_domain, company_name, includeFirmographics, skipCache }),
+      compact({ company_domain, company_name, includeFirmographics, skipCache, minConfidenceScore }),
     );
   },
 );
@@ -491,7 +504,7 @@ server.registerTool(
     fetch_signals: z
       .boolean()
       .optional()
-      .describe("If true, the actor fetches hiring and tech-stack signals automatically before scoring."),
+      .describe("If true, the actor runs the GTM Hiring Signal Scraper and the GTM Tech Stack Signal Scraper for this company before scoring and fills any hiring or tech stack signal not supplied. Both bill your Apify account at their own Store prices. If a lookup fails, the row is marked degraded and names the missing signals."),
     include_explanation: z
       .boolean()
       .optional()
@@ -615,9 +628,14 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Force a fresh resolution and ignore the 7 day result cache."),
+      minLinkedinConfidence: z
+        .string()
+        .regex(/^\s*(100|[1-9]?[0-9])?\s*$/)
+        .optional()
+        .describe("A LinkedIn page the actor finds is returned only when its linkedin_confidence is at least this value, 0 to 100. Default \"70\". A LinkedIn URL you provide is always returned as given. Sent as a string for Clay compatibility."),
     },
   },
-  async ({ company_name, domain, linkedin_url, skipCache }) => {
+  async ({ company_name, domain, linkedin_url, skipCache, minLinkedinConfidence }) => {
     if (
       (company_name === undefined || company_name === "") &&
       (domain === undefined || domain === "") &&
@@ -636,6 +654,7 @@ server.registerTool(
         domain,
         linkedin_url,
         skipCache: boolToString(skipCache),
+        minLinkedinConfidence,
       }),
     );
   },
@@ -779,9 +798,20 @@ server.registerTool(
         .string()
         .optional()
         .describe("Optional company name hint, used when the domain does not match the brand name, e.g. Deel for deel.com."),
+      signal_types: z
+        .array(z.enum(["funding_round", "ipo", "acquisition", "exec_move", "product_launch", "partnership"]))
+        .optional()
+        .describe("Report only these event types. Omit for every type. Narrowing also narrows the search: a funding only run issues one news query instead of four."),
+      lookback_days: z
+        .number()
+        .int()
+        .min(1)
+        .max(1825)
+        .optional()
+        .describe("How far back to search, in days. Default 365."),
     },
   },
-  async ({ domain, company_name }) => {
+  async ({ domain, company_name, signal_types, lookback_days }) => {
     if (domain === undefined || domain.trim() === "") {
       return {
         isError: true,
@@ -791,7 +821,7 @@ server.registerTool(
     return runActor(
       "FS13X6dhQVgX3XOM6",
       "Funding & Press Signal Scanner",
-      compact({ domain, company_name }),
+      compact({ domain, company_name, signal_types, lookback_days }),
     );
   },
 );
@@ -802,7 +832,7 @@ server.registerTool(
   {
     title: "Get Company Changes",
     description:
-      "Monitor a company domain for changes across hiring, tech stack, funding, firmographics, and social since the last run. Returns only what changed as typed change events in flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Monitor a company domain for changes across hiring, tech stack, funding, firmographics, and social since the last run. Returns only what changed as typed change events in flat, Clay-ready JSON. Pass sources to watch fewer than all five sources and min_severity to drop minor changes; each source left out is one fewer sub actor run on the bill. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Get Company Changes",
       readOnlyHint: true,
@@ -827,9 +857,17 @@ server.registerTool(
         .int()
         .optional()
         .describe("Per-child run timeout in seconds. Children run in parallel, so total wall time is about the slowest child. Default: 90."),
+      sources: z
+        .array(z.enum(["hiring", "tech_stack", "firmographic", "funding", "social"]))
+        .optional()
+        .describe("Which sources to monitor. Omit for all five. Each source left out is one fewer sub actor run per company, so a single source watch is billed for one source, not five."),
+      min_severity: z
+        .enum(["low", "medium", "high"])
+        .optional()
+        .describe("Report only changes at or above this severity. low reports every change and is the default. high keeps leadership moves, funding, acquisitions, and a CRM or sequencer appearing or disappearing."),
     },
   },
-  async ({ domain, company_name, previous_snapshot, sub_actor_timeout_secs }) => {
+  async ({ domain, company_name, previous_snapshot, sub_actor_timeout_secs, sources, min_severity }) => {
     if (domain === undefined || domain.trim() === "") {
       return {
         isError: true,
@@ -839,7 +877,7 @@ server.registerTool(
     return runActor(
       "oX44rS0fkEJ3rXLWe",
       "Company Change-Event Feed",
-      compact({ domain, company_name, previous_snapshot, sub_actor_timeout_secs }),
+      compact({ domain, company_name, previous_snapshot, sub_actor_timeout_secs, sources, min_severity }),
     );
   },
 );
@@ -880,9 +918,13 @@ server.registerTool(
         .int()
         .optional()
         .describe("Per-request timeout in milliseconds. 3000 to 20000. Default: 9000."),
+      vendors: z
+        .array(z.enum(["sierra", "decagon", "ada", "forethought", "intercom_fin", "ultimate_ai", "netomi", "yellow_ai", "cognigy", "kore_ai", "chatbase", "voiceflow", "sendbird_ai", "intercom", "zendesk", "drift", "gorgias", "freshworks", "tidio", "crisp", "kustomer", "qualified", "hubspot_breeze", "algolia", "glean", "inkeep", "kapa_ai", "mendable", "mutiny", "dynamic_yield", "openai_api", "anthropic_api", "azure_openai", "aws_bedrock", "google_gemini", "cohere", "mistral", "groq", "together_ai", "fireworks_ai", "replicate", "perplexity_api", "huggingface", "openrouter", "cloudflare_ai_gateway", "pinecone", "weaviate", "qdrant", "vercel_ai_sdk", "langchain", "llamaindex", "assistant_ui"]))
+        .optional()
+        .describe("Report only these AI vendors. Omit to report every one. Detection is unchanged, so filtering costs nothing extra. The ai_maturity verdict, llms.txt, robots.txt, and pricing reads are site wide and never narrowed by this."),
     },
   },
-  async ({ domain, domains, check_pricing, skipCache, request_timeout_ms }) => {
+  async ({ domain, domains, check_pricing, skipCache, request_timeout_ms, vendors }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -899,6 +941,7 @@ server.registerTool(
         check_pricing,
         skipCache,
         request_timeout_ms,
+        vendors,
       }),
     );
   },
@@ -1182,6 +1225,7 @@ server.registerTool(
     check_endpoints: z.boolean().optional().describe("Probes sitemap, OpenAPI, well known files and feeds. Adds 7 concurrent requests. Default: true."),
     check_structured_data: z.boolean().optional().describe("Parses JSON-LD, microdata, Open Graph and canonical off the homepage. Costs no extra requests. Default: true."),
     skipCache: z.enum(["false", "true"]).optional().describe("Leave as false to use the 7 day cache. Set to true to re-audit the domain from scratch. Default: \"false\"."),
+    checks: z.array(z.enum(["llms_txt", "robots_ai", "sitemap", "openapi", "security_txt", "feeds", "json_ld", "microdata", "open_graph", "canonical", "render_mode"])).optional().describe("Run only these checks. Omit for all of them. Narrowing narrows the work, and the score is rescaled over the checks selected."),
     },
   },
   async (args) =>
