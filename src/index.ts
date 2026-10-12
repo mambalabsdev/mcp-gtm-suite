@@ -421,7 +421,7 @@ server.registerTool(
   {
     title: "Resolve LinkedIn URL",
     description:
-      "Resolve a company domain or name to its LinkedIn company URL with a confidence score, firmographics, and social links as a flat, Clay-ready JSON row. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve a company domain or name to its LinkedIn company URL, read from public search results, with a confidence score, social links, and optional firmographics from search snippets, as a flat, Clay-ready JSON row. No request is sent to LinkedIn. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve LinkedIn URL",
       readOnlyHint: true,
@@ -438,7 +438,7 @@ server.registerTool(
     includeFirmographics: z
       .enum(["false", "true"])
       .optional()
-      .describe("When \"true\", also fetches the public LinkedIn company page to add employee count, industry, HQ, follower count and description. Off by default because it is the most expensive step. Sent as a string for Clay compatibility."),
+      .describe("When \"true\", also reads employee count, industry, HQ, follower count and description from search result snippets about the LinkedIn company page. No request is sent to LinkedIn. Fields no snippet states stay null. Off by default because it can add a search. Sent as a string for Clay compatibility."),
     skipCache: z
       .enum(["false", "true"])
       .optional()
