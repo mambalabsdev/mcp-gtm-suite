@@ -130,6 +130,7 @@ function session(requests, { env = {}, log } = {}) {
 
 function sample(schema) {
   if (schema.enum) return schema.enum[0];
+  if (schema.format === "email") return "you@example.com";
   switch (schema.type) {
     case "array":
       return [sample(schema.items ?? { type: "string" })];

@@ -115,11 +115,11 @@ Each tool maps to one Apify actor. Every input each tool accepts is listed below
 - `audit_agent_accessibility` (6 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`, `checks`, `max_charge_usd`
 - `classify_contact` (9 inputs): required `job_title`; optional `full_name`, `company_domain`, `verify_position`, `use_llm_fallback`, `llm_provider`, `llm_model`, `skipCache`, `max_charge_usd`
 - `map_company_event_presence` (7 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`, `max_charge_usd`
-- `resolve_legal_entity` (7 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`, `max_charge_usd`
+- `resolve_legal_entity` (9 inputs): required `domain`, `sec_requester_name`, `sec_requester_email`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`, `max_charge_usd`
 - `monitor_public_awards` (8 inputs): required `register`; optional `window_days`, `min_award_value`, `max_entities`, `exclude_government_recipients`, `resolve_domains`, `domain_confidence_floor`, `max_charge_usd`
-- `capture_linkedin_posts_and_commenters` (3 inputs): optional `profile_urls`, `company_urls`, `posted_since`.
+- `capture_linkedin_posts_and_commenters` (4 inputs): optional `profile_urls`, `company_urls`, `posted_since`, `max_charge_usd`.
 
-Every tool except `capture_linkedin_posts_and_commenters` (whose actor has no spending cap input) also accepts `max_charge_usd`, an optional spending cap in USD for that call: the actor stops before any charge that would take the run past it and keeps every row already charged.
+Every tool also accepts `max_charge_usd`, an optional spending cap in USD for that call: the actor stops before any charge that would take the run past it and keeps every row already charged.
 
 `push_leads_to_sequencer` is the only tool here that writes: it adds leads to your campaign unless `dry_run` is true.
 

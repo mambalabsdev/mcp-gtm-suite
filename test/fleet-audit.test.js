@@ -105,6 +105,7 @@ function session(requests, { env = {}, log } = {}) {
 
 function sample(schema = {}) {
   if (schema.enum) return schema.enum[0];
+  if (schema.format === "email") return "you@example.com";
   if (schema.anyOf) return sample(schema.anyOf[0]);
   switch (schema.type) {
     case "array":
