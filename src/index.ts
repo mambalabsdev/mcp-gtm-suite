@@ -6,6 +6,16 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
+// Optional per call spending cap, passed through to the actor's own max_charge_usd
+// input. The actor enforces it; this wrapper only forwards it when set.
+const MAX_CHARGE_USD = z
+  .number()
+  .min(0)
+  .optional()
+  .describe(
+    "Optional spending cap for this call, in USD, passed to the actor as max_charge_usd. The run stops before any charge that would take it past this amount and keeps every row already charged. Leave empty to rely only on the maximum charge per run set on your Apify account.",
+  );
+
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
   readFileSync(join(here, "..", "package.json"), "utf8"),
@@ -87,7 +97,9 @@ async function runActor(
   actorPath: string,
   actorLabel: string,
   input: Record<string, unknown>,
+  maxChargeUsd?: number,
 ): Promise<ToolResult> {
+  if (maxChargeUsd !== undefined) input = { ...input, max_charge_usd: maxChargeUsd };
   const APIFY_TOKEN = process.env.APIFY_TOKEN;
   if (!APIFY_TOKEN) {
     return { isError: true, content: [{ type: "text", text: "APIFY_TOKEN is not set. Create a token at https://console.apify.com/account/integrations and set it as the APIFY_TOKEN environment variable." }] };
@@ -228,10 +240,10 @@ server.registerTool(
   {
     title: "Scan GTM Hiring Signals",
     description:
-      "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row. Use this for a go-to-market hiring verdict (is the company building its sales and marketing team, and how fast); use scan_job_board_keywords instead to count open roles in categories or keywords you choose, including non-GTM roles. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Scan company career pages to detect GTM hiring activity. Returns sales, marketing, and revenue operations job postings across Greenhouse, Lever, and Ashby as a flat, Clay-ready JSON row. Use this for a go-to-market hiring verdict (is the company building its sales and marketing team, and how fast); use scan_job_board_keywords instead to count open roles in categories or keywords you choose, including non-GTM roles. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Scan GTM Hiring Signals",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -263,14 +275,15 @@ server.registerTool(
       .string()
       .optional()
       .describe("ISO date of the previous run for this domain, used in velocity mode to report days between runs."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
-  async ({ domain, role_filter, ats_slug, mode, include_role_details, previous_gtm_role_count, previous_run_date }) =>
+  async ({ domain, role_filter, ats_slug, mode, include_role_details, previous_gtm_role_count, previous_run_date, max_charge_usd }) =>
     runActor(
       "D7O1SA2EqwHGsGr1P",
       "GTM Hiring Signal Scraper",
       compact({ domain, role_filter, ats_slug, mode, include_role_details, previous_gtm_role_count, previous_run_date }),
-    ),
+     max_charge_usd,),
 );
 
 // 2. GTM Tech Stack Signal Enrichment
@@ -279,10 +292,10 @@ server.registerTool(
   {
     title: "Detect GTM Tech Stack",
     description:
-      "Detect which GTM tools a company uses from its public website. Returns CRM, sequencer, and marketing automation signals with per-tool boolean flags as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Detect which GTM tools a company uses from its public website. Returns CRM, sequencer, and marketing automation signals with per-tool boolean flags as a flat, Clay-ready JSON row. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Detect GTM Tech Stack",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -312,9 +325,10 @@ server.registerTool(
       .array(z.enum(["hubspot", "salesforce", "marketo", "pardot", "intercom", "drift", "apollo", "outreach", "gong", "zoominfo"]))
       .optional()
       .describe("Report only these tools. Omit to report every detectable tool. Only tools with a client side fingerprint are selectable. Detection is unchanged, so filtering costs nothing extra."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
-  async ({ domain, company_domain, url, crawl_additional_pages, skipCache, technologies }) => {
+  async ({ domain, company_domain, url, crawl_additional_pages, skipCache, technologies, max_charge_usd }) => {
     // Measured 2026-08-13: the actor's built schema marks nothing required, but
     // with no company named at all the run throws and exits FAILED. Rejecting
     // here rejects only what the actor itself rejects.
@@ -328,7 +342,7 @@ server.registerTool(
       "qyd7nNyqFPelQViBx",
       "GTM Tech Stack Signal Enrichment",
       compact({ domain, company_domain, url, crawl_additional_pages, skipCache, technologies }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -338,10 +352,10 @@ server.registerTool(
   {
     title: "Aggregate GTM Signals",
     description:
-      "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection by default, plus funding, events, or workplace when named in sources, in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Aggregate a company's GTM signals into one composite score. Runs hiring and tech-stack detection by default, plus funding, events, or workplace when named in sources, in one call and returns a composite score, recommended action, and optional summary as a flat, Clay-ready JSON row. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Aggregate GTM Signals",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -357,14 +371,15 @@ server.registerTool(
       .array(z.enum(["hiring", "tech_stack", "funding", "events", "workplace"]))
       .optional()
       .describe("Which signals to aggregate. Defaults to hiring and tech_stack. Each extra source adds one sub actor run to the bill and one dimension to the composite score, which is normalized over the sources selected."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
-  async ({ company_domain, include_summary, explain_mode, sources }) =>
+  async ({ company_domain, include_summary, explain_mode, sources, max_charge_usd }) =>
     runActor(
       "xKdRfnfFNkdMpFuNs",
       "GTM Signals Aggregator",
       compact({ company_domain, include_summary, explain_mode, sources }),
-    ),
+     max_charge_usd,),
 );
 
 // 4. Job Board Keyword Signal Scanner
@@ -373,10 +388,10 @@ server.registerTool(
   {
     title: "Scan Job Board Keywords",
     description:
-      "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row. Use this when you choose the role categories or keywords (engineering, finance, a product name in a job ad); use scan_gtm_hiring_signals instead for the fixed sales and marketing hiring verdict. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Scan a company's job board for roles in chosen categories across Greenhouse, Lever, Ashby, Workday, and Rippling. Returns matched role counts and titles per category as a flat, Clay-ready JSON row. Use this when you choose the role categories or keywords (engineering, finance, a product name in a job ad); use scan_gtm_hiring_signals instead for the fixed sales and marketing hiring verdict. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Scan Job Board Keywords",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -399,6 +414,7 @@ server.registerTool(
       .optional()
       .describe("Comma-separated matched role titles from a previous run, to compute deltas."),
     previous_run_date: z.string().optional().describe("ISO date of the previous run, e.g. 2026-03-15."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
   async ({
@@ -408,6 +424,7 @@ server.registerTool(
     enable_fallback,
     previous_roles_detected,
     previous_run_date,
+    max_charge_usd,
   }) =>
     runActor(
       "4DvqpvhMR74NLcDDY",
@@ -420,7 +437,7 @@ server.registerTool(
         previous_roles_detected,
         previous_run_date,
       }),
-    ),
+     max_charge_usd,),
 );
 
 // 5. Domain to LinkedIn URL Resolver
@@ -429,10 +446,10 @@ server.registerTool(
   {
     title: "Resolve LinkedIn URL",
     description:
-      "Resolve a company domain or name to its LinkedIn company URL, with a 0-100 confidence_score, social links, and optional firmographics from search snippets, as a flat, Clay-ready JSON row. A URL is returned only when verified: the company homepage links it, or its name is identical to the name the company site declares or the company_name you pass; otherwise linkedin_company_url is null and verification says why. No request is sent to LinkedIn. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve a company domain or name to its LinkedIn company URL, with a 0-100 confidence_score, social links, and optional firmographics from search snippets, as a flat, Clay-ready JSON row. A URL is returned only when verified: the company homepage links it, or its name is identical to the name the company site declares or the company_name you pass; otherwise linkedin_company_url is null and verification says why. No request is sent to LinkedIn. Provide at least one of company_domain or company_name. Use this when the LinkedIn company URL is the answer you need; use resolve_company_identity instead to cross-check a name, domain, and LinkedIn URL you already hold and get a canonical identity with conflicts flagged. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve LinkedIn URL",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -456,9 +473,10 @@ server.registerTool(
       .regex(/^\s*(100|[1-9]?[0-9])?\s*$/)
       .optional()
       .describe("A LinkedIn page is returned only when its match score is at least this value, 0 to 100. Default \"70\". Raise it for fewer, surer answers; lower it for more answers and more wrong ones. Sent as a string for Clay compatibility."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
-  async ({ company_domain, company_name, includeFirmographics, skipCache, minConfidenceScore }) => {
+  async ({ company_domain, company_name, includeFirmographics, skipCache, minConfidenceScore, max_charge_usd }) => {
     if (
       (company_domain === undefined || company_domain === "") &&
       (company_name === undefined || company_name === "")
@@ -472,7 +490,7 @@ server.registerTool(
       "3HtnSaqPHOg1Qg5gx",
       "Domain to LinkedIn URL Resolver",
       compact({ company_domain, company_name, includeFirmographics, skipCache, minConfidenceScore }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -482,10 +500,10 @@ server.registerTool(
   {
     title: "Score ICP Fit",
     description:
-      "Score a company against your ideal customer profile (ICP) using weighted signals. Returns a 0 to 100 icp_score, an A to D icp_tier, and a per-signal breakdown as a flat, Clay-ready JSON row. Define your ICP with a template, scoring_config, or plain-English icp_description (which requires llm_api_key). Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Score a company against your ideal customer profile (ICP) using weighted signals. Returns a 0 to 100 icp_score, an A to D icp_tier, and a per-signal breakdown as a flat, Clay-ready JSON row. Define your ICP with a template, scoring_config, or plain-English icp_description (which requires llm_api_key). Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Score ICP Fit",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -543,6 +561,7 @@ server.registerTool(
     has_twitter: z.string().optional().describe("Whether a company X/Twitter profile was found, from the Company Social Presence Mapper (Actor ID 4k6CCemkgBDz18m2h). Contributes to social_presence. Accepts a boolean-like string."),
     job_count: z.string().optional().describe("Number of open jobs found, from the Job Board Keyword Signal Scanner (Actor ID 4DvqpvhMR74NLcDDY). Scores via active_hiring_volume when at or above min_job_count (default 3). Accepts a numeric string."),
     keyword_match_count: z.string().optional().describe("Number of target-keyword matches found, from the Job Board Keyword Signal Scanner (Actor ID 4DvqpvhMR74NLcDDY). Scores via keyword_signal_match when at or above min_keyword_matches (default 1). Accepts a numeric string."),
+      max_charge_usd: MAX_CHARGE_USD,
   },
   },
   async (args) =>
@@ -594,7 +613,7 @@ server.registerTool(
         job_count: args.job_count,
         keyword_match_count: args.keyword_match_count,
       }),
-    ),
+     args.max_charge_usd,),
 );
 
 // 7. Company Identity Resolver
@@ -603,10 +622,10 @@ server.registerTool(
   {
     title: "Resolve Company Identity",
     description:
-      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. A LinkedIn URL the actor finds is returned only when verified against the company site or the name, with the reason in linkedin_verification. Provide at least one of company_name, domain, or linkedin_url. Use this to reconcile or deduplicate records you already hold; use resolve_linkedin_url instead when you only need the LinkedIn company URL for a domain or name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Resolve any combination of company name, domain, or LinkedIn URL into one canonical company identity: the name, primary domain, and LinkedIn company URL, each with a 0-100 confidence score plus an overall score and a match method. Cross-checks the inputs you give it, resolves the ones you do not, and flags conflicts (a domain and a LinkedIn slug that disagree) instead of merging them. A LinkedIn URL the actor finds is returned only when verified against the company site or the name, with the reason in linkedin_verification. Provide at least one of company_name, domain, or linkedin_url. Use this to reconcile or deduplicate records you already hold; use resolve_linkedin_url instead when you only need the LinkedIn company URL for a domain or name. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Resolve Company Identity",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -633,9 +652,10 @@ server.registerTool(
         .regex(/^\s*(100|[1-9]?[0-9])?\s*$/)
         .optional()
         .describe("A LinkedIn page the actor finds is returned only when its linkedin_confidence is at least this value, 0 to 100. Default \"70\". A LinkedIn URL you provide is always returned as given. Sent as a string for Clay compatibility."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ company_name, domain, linkedin_url, skipCache, minLinkedinConfidence }) => {
+  async ({ company_name, domain, linkedin_url, skipCache, minLinkedinConfidence, max_charge_usd }) => {
     if (
       (company_name === undefined || company_name === "") &&
       (domain === undefined || domain === "") &&
@@ -656,7 +676,7 @@ server.registerTool(
         skipCache: boolToString(skipCache),
         minLinkedinConfidence,
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -666,10 +686,10 @@ server.registerTool(
   {
     title: "Enrich Company Firmographics",
     description:
-      "Enrich a company domain into structured firmographics: employee band, industry, HQ, founded year, revenue estimate, logo, and description, with source provenance. Parsed from the company's schema.org/Organization JSON-LD and HTML meta tags and returned as a flat, Clay-ready JSON row with a source_signals array and a data_completeness score. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Enrich a company domain into structured firmographics: employee band, industry, HQ, founded year, revenue estimate, logo, and description, with source provenance. Parsed from the company's schema.org/Organization JSON-LD and HTML meta tags and returned as a flat, Clay-ready JSON row with a source_signals array and a data_completeness score. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Enrich Company Firmographics",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -695,9 +715,10 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Force a fresh enrichment and ignore the 7 day result cache."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, company_name, domains, batchSize, skipCache }) => {
+  async ({ domain, company_name, domains, batchSize, skipCache, max_charge_usd }) => {
     if (
       (domain === undefined || domain === "") &&
       (!Array.isArray(domains) || domains.length === 0)
@@ -711,7 +732,7 @@ server.registerTool(
       "YlUtLWjfPpqykmB8g",
       "Company Firmographic Enricher",
       compact({ domain, company_name, domains, batchSize, skipCache }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -721,10 +742,10 @@ server.registerTool(
   {
     title: "Map Company Social Presence",
     description:
-      "Map a company's social media presence across LinkedIn, X, Instagram, Facebook, and YouTube. Returns profile URLs and follower counts in flat Clay-ready JSON. Profiles are discovered from the company's own homepage links, a web search fallback, and pattern guessing, then validated against the company. Follower counts are extracted where public; X is URL-only (its count needs login) and Instagram and Facebook counts are best-effort. Provide at least one of company_domain or company_name. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Map a company's social media presence across LinkedIn, X, Instagram, Facebook, and YouTube. Returns profile URLs and follower counts in flat Clay-ready JSON. Profiles are discovered from the company's own homepage links, a web search fallback, and pattern guessing, then validated against the company. Follower counts are extracted where public; X is URL-only (its count needs login) and Instagram and Facebook counts are best-effort. Provide at least one of company_domain or company_name. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Map Company Social Presence",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -750,9 +771,10 @@ server.registerTool(
         .boolean()
         .optional()
         .describe("Force a fresh lookup and ignore the 7 day result cache."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ company_domain, company_name, platforms, includeFollowerCounts, skipCache }) => {
+  async ({ company_domain, company_name, platforms, includeFollowerCounts, skipCache, max_charge_usd }) => {
     if (
       (company_domain === undefined || company_domain === "") &&
       (company_name === undefined || company_name === "")
@@ -772,7 +794,7 @@ server.registerTool(
         includeFollowerCounts: boolToString(includeFollowerCounts),
         skipCache: boolToString(skipCache),
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -782,10 +804,10 @@ server.registerTool(
   {
     title: "Get Funding and Press Signals",
     description:
-      "Scan Google News and PR wires for funding rounds, executive moves, product launches, and acquisitions at any company domain. Returns deduplicated, dated events in flat Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Scan Google News and PR wires for funding rounds, executive moves, product launches, and acquisitions at any company domain. Returns deduplicated, dated events in flat Clay-ready JSON. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Get Funding and Press Signals",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -809,9 +831,10 @@ server.registerTool(
         .max(1825)
         .optional()
         .describe("How far back to search, in days. Default 365."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, company_name, signal_types, lookback_days }) => {
+  async ({ domain, company_name, signal_types, lookback_days, max_charge_usd }) => {
     if (domain === undefined || domain.trim() === "") {
       return {
         isError: true,
@@ -822,7 +845,7 @@ server.registerTool(
       "FS13X6dhQVgX3XOM6",
       "Funding & Press Signal Scanner",
       compact({ domain, company_name, signal_types, lookback_days }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -832,10 +855,10 @@ server.registerTool(
   {
     title: "Get Company Changes",
     description:
-      "Monitor a company domain for changes across hiring, tech stack, funding, firmographics, and social since the last run. Returns only what changed as typed change events in flat, Clay-ready JSON. Pass sources to watch fewer than all five sources and min_severity to drop minor changes; each source left out is one fewer sub actor run on the bill. Read-only; requires an APIFY_TOKEN and consumes Apify credits per call.",
+      "Monitor a company domain for changes across hiring, tech stack, funding, firmographics, and social since the last run. Returns only what changed as typed change events in flat, Clay-ready JSON. Pass sources to watch fewer than all five sources and min_severity to drop minor changes; each source left out is one fewer sub actor run on the bill. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per call.",
     annotations: {
       title: "Get Company Changes",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: false,
       openWorldHint: true,
@@ -865,9 +888,10 @@ server.registerTool(
         .enum(["low", "medium", "high"])
         .optional()
         .describe("Report only changes at or above this severity. low reports every change and is the default. high keeps leadership moves, funding, acquisitions, and a CRM or sequencer appearing or disappearing."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, company_name, previous_snapshot, sub_actor_timeout_secs, sources, min_severity }) => {
+  async ({ domain, company_name, previous_snapshot, sub_actor_timeout_secs, sources, min_severity, max_charge_usd }) => {
     if (domain === undefined || domain.trim() === "") {
       return {
         isError: true,
@@ -878,7 +902,7 @@ server.registerTool(
       "oX44rS0fkEJ3rXLWe",
       "Company Change-Event Feed",
       compact({ domain, company_name, previous_snapshot, sub_actor_timeout_secs, sources, min_severity }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -888,10 +912,10 @@ server.registerTool(
   {
     title: "Detect AI Tooling",
     description:
-      "Given a company domain, determine how far that company has gone with AI. Returns an ai_maturity tier of none, declared (says AI but nothing observable is running), deployed (AI tooling is live on the site), or commercialized (the pricing page charges for AI via credits, tokens, an add-on, an AI-named plan, or a per-outcome price), plus the detected AI vendors, validated llms.txt status, robots.txt AI-crawler policy, and the evidence behind the verdict. A domain behind a bot challenge returns blocked=true at low confidence rather than a false negative. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+      "Given a company domain, determine how far that company has gone with AI. Returns an ai_maturity tier of none, declared (says AI but nothing observable is running), deployed (AI tooling is live on the site), or commercialized (the pricing page charges for AI via credits, tokens, an add-on, an AI-named plan, or a per-outcome price), plus the detected AI vendors, validated llms.txt status, robots.txt AI-crawler policy, and the evidence behind the verdict. A domain behind a bot challenge returns blocked=true at low confidence rather than a false negative. Returns flat, Clay-ready JSON. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
     annotations: {
       title: "Detect AI Tooling",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -922,9 +946,10 @@ server.registerTool(
         .array(z.enum(["sierra", "decagon", "ada", "forethought", "intercom_fin", "ultimate_ai", "netomi", "yellow_ai", "cognigy", "kore_ai", "chatbase", "voiceflow", "sendbird_ai", "intercom", "zendesk", "drift", "gorgias", "freshworks", "tidio", "crisp", "kustomer", "qualified", "hubspot_breeze", "algolia", "glean", "inkeep", "kapa_ai", "mendable", "mutiny", "dynamic_yield", "openai_api", "anthropic_api", "azure_openai", "aws_bedrock", "google_gemini", "cohere", "mistral", "groq", "together_ai", "fireworks_ai", "replicate", "perplexity_api", "huggingface", "openrouter", "cloudflare_ai_gateway", "pinecone", "weaviate", "qdrant", "vercel_ai_sdk", "langchain", "llamaindex", "assistant_ui"]))
         .optional()
         .describe("Report only these AI vendors. Omit to report every one. Detection is unchanged, so filtering costs nothing extra. The ai_maturity verdict, llms.txt, robots.txt, and pricing reads are site wide and never narrowed by this."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, domains, check_pricing, skipCache, request_timeout_ms, vendors }) => {
+  async ({ domain, domains, check_pricing, skipCache, request_timeout_ms, vendors, max_charge_usd }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -943,7 +968,7 @@ server.registerTool(
         request_timeout_ms,
         vendors,
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -953,10 +978,10 @@ server.registerTool(
   {
     title: "Fingerprint Outbound Infrastructure",
     description:
-      "Given a company domain, determine whether that company runs cold email outbound and on what stack. Returns a runs_outbound verdict of program (a deliberate cold outbound setup), light (one weak signal), none, or unknown, with the evidence behind it. The strongest signal is the lookalike sending domains a real program leaves behind: domains like getcompany.com or company-mail.com that carry their own mail and redirect back to the primary site. Also returns the inbox provider (Google Workspace, Microsoft 365 and others) for the primary domain and each sending domain, any detected sending platform (Outreach, Salesloft, Lemlist, Instantly, Smartlead, Apollo and more), registration clusters showing sending domains bought on the same day, cold email infrastructure vendors, and SPF, DKIM and DMARC posture. Sending platform recall is partial by design: sequencers that connect over OAuth to a customer's own mailbox leave no DNS trace, so an empty sending_platforms means little while a populated one is solid. Public DNS and HTTP redirects only. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+      "Given a company domain, determine whether that company runs cold email outbound and on what stack. Returns a runs_outbound verdict of program (a deliberate cold outbound setup), light (one weak signal), none, or unknown, with the evidence behind it. The strongest signal is the lookalike sending domains a real program leaves behind: domains like getcompany.com or company-mail.com that carry their own mail and redirect back to the primary site. Also returns the inbox provider (Google Workspace, Microsoft 365 and others) for the primary domain and each sending domain, any detected sending platform (Outreach, Salesloft, Lemlist, Instantly, Smartlead, Apollo and more), registration clusters showing sending domains bought on the same day, cold email infrastructure vendors, and SPF, DKIM and DMARC posture. Sending platform recall is partial by design: sequencers that connect over OAuth to a customer's own mailbox leave no DNS trace, so an empty sending_platforms means little while a populated one is solid. Public DNS and HTTP redirects only. Returns flat, Clay-ready JSON. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
     annotations: {
       title: "Fingerprint Outbound Infrastructure",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1001,9 +1026,10 @@ server.registerTool(
         .int()
         .optional()
         .describe("Per-DNS-lookup timeout in milliseconds."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, domains, scan_sending_domains, sending_domain_depth, check_deliverability, skipCache, max_sending_domain_probes, request_timeout_ms, dns_timeout_ms }) => {
+  async ({ domain, domains, scan_sending_domains, sending_domain_depth, check_deliverability, skipCache, max_sending_domain_probes, request_timeout_ms, dns_timeout_ms, max_charge_usd }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -1025,7 +1051,7 @@ server.registerTool(
         request_timeout_ms,
         dns_timeout_ms,
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -1035,10 +1061,10 @@ server.registerTool(
   {
     title: "Track Publication Cadence",
     description:
-      "Given a company domain, measure how much long-form work that company publishes and whether the rate is rising or falling. Returns post counts for the last 30 days, 90 days and 12 months, a monthly average, and a cadence_trend of accelerating, steady, declining, dormant or unknown, with the percent change behind it. The trend compares the last 90 days against the prior 275 days, both normalized to posts per month. Also returns the blog URL, the format mix (blog posts, guides, reports, case studies, whitepapers, podcasts, videos, press releases, research), the number of distinct bylines, and how the post list was discovered. This measures EDITORIAL output volume, not product changelogs: a release feed is detected and rejected rather than counted. Publication dates are read from the post pages, because sitemap lastmod was measured to be a modification date running later than publication by a median of 151 to 1653 days. When a site's date field tracks edits rather than publication, date_source_reliable comes back false and every count is nulled rather than reported wrong, so read that field before quoting a number. Counts are a census when the archive fits the page budget and a scaled even sample otherwise, flagged by counts_are_estimate. Public sitemaps, feeds and pages only. Returns flat, Clay-ready JSON. Read-only; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
+      "Given a company domain, measure how much long-form work that company publishes and whether the rate is rising or falling. Returns post counts for the last 30 days, 90 days and 12 months, a monthly average, and a cadence_trend of accelerating, steady, declining, dormant or unknown, with the percent change behind it. The trend compares the last 90 days against the prior 275 days, both normalized to posts per month. Also returns the blog URL, the format mix (blog posts, guides, reports, case studies, whitepapers, podcasts, videos, press releases, research), the number of distinct bylines, and how the post list was discovered. This measures EDITORIAL output volume, not product changelogs: a release feed is detected and rejected rather than counted. Publication dates are read from the post pages, because sitemap lastmod was measured to be a modification date running later than publication by a median of 151 to 1653 days. When a site's date field tracks edits rather than publication, date_source_reliable comes back false and every count is nulled rather than reported wrong, so read that field before quoting a number. Counts are a census when the archive fits the page budget and a scaled even sample otherwise, flagged by counts_are_estimate. Public sitemaps, feeds and pages only. Returns flat, Clay-ready JSON. Reads public data and writes nothing; requires an APIFY_TOKEN and consumes Apify credits per domain analyzed.",
     annotations: {
       title: "Track Publication Cadence",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1085,9 +1111,10 @@ server.registerTool(
         .int()
         .optional()
         .describe("Per-HTTP-request timeout in milliseconds."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ domain, domains, max_pages_to_date, domain_time_budget_ms, skipCache, page_concurrency, max_sitemap_fetches, request_timeout_ms }) => {
+  async ({ domain, domains, max_pages_to_date, domain_time_budget_ms, skipCache, page_concurrency, max_sitemap_fetches, request_timeout_ms, max_charge_usd }) => {
     const hasBatch = Array.isArray(domains) && domains.length > 0;
     if (!hasBatch && (domain === undefined || domain.trim() === "")) {
       return {
@@ -1108,7 +1135,7 @@ server.registerTool(
         max_sitemap_fetches,
         request_timeout_ms,
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -1168,9 +1195,10 @@ server.registerTool(
         .array(z.string())
         .optional()
         .describe("Extra column names to pass through as custom variables under their own name. Columns that are neither mapped nor listed here are dropped."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
-  async ({ sequencer, api_key, campaign_id, leads, dataset_id, min_icp_score, deduplicate, dry_run, field_mapping, custom_variables }) => {
+  async ({ sequencer, api_key, campaign_id, leads, dataset_id, min_icp_score, deduplicate, dry_run, field_mapping, custom_variables, max_charge_usd }) => {
     const hasLeads = Array.isArray(leads) && leads.length > 0;
     const hasDataset = dataset_id !== undefined && dataset_id !== "";
     if (!hasLeads && !hasDataset) {
@@ -1194,7 +1222,7 @@ server.registerTool(
         field_mapping,
         custom_variables,
       }),
-    );
+     max_charge_usd,);
   },
 );
 
@@ -1215,7 +1243,7 @@ server.registerTool(
       "Give it a domain and it returns whether an AI agent can read that site, and what the site's policy says, as one flat row of 42 fields across five families: the llms.txt family including llms-full.txt and ai.txt, robots.txt AI crawler policy including the newer Content Signal directives, structured data presence and health across JSON-LD, microdata, Open Graph and canonical, render mode, and machine readable endpoint discovery covering sitemap, OpenAPI, well known files and feeds. Every field is a fact read off a fetch. No model is called at any point, so the same domain returns the same row today and next month unless the site actually changed. Twelve requests per domain, typically 2 to 4 seconds. Built for a technical SEO or growth engineer preparing a site for AI crawlers, or an agency selling that work and needing a before and after audit across a client list. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Audit Agent Accessibility",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1226,6 +1254,7 @@ server.registerTool(
     check_structured_data: z.boolean().optional().describe("Parses JSON-LD, microdata, Open Graph and canonical off the homepage. Costs no extra requests. Default: true."),
     skipCache: z.enum(["false", "true"]).optional().describe("Leave as false to use the 7 day cache. Set to true to re-audit the domain from scratch. Default: \"false\"."),
     checks: z.array(z.enum(["llms_txt", "robots_ai", "sitemap", "openapi", "security_txt", "feeds", "json_ld", "microdata", "open_graph", "canonical", "render_mode"])).optional().describe("Run only these checks. Omit for all of them. Narrowing narrows the work, and the score is rescaled over the checks selected."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
@@ -1241,7 +1270,7 @@ server.registerTool(
       "One contact in, one classified row out. Give it a job title and it returns the department, the seniority level, a seniority_rank from 1 to 12 you can filter with a comparison, and classification_rule, the named rule that fired, so every decision is auditable. The classification is a deterministic rule table: it needs no API key, calls no model, and returns the same answer for the same title every time. Only job_title is required. full_name and company_domain are read only when verify_position is on, which checks whether the person is still listed on their employer's own website and adds roughly 3 seconds and 9 requests per contact. The optional LLM fallback for titles the rules cannot place runs on your own key, set as the LLM_API_KEY secret environment variable on your own copy of the actor, and only the title is ever sent, never the person's name. With no key set those titles come back null rather than failing the row. This actor does not discover people: the name and title come from you. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Classify Contact",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1255,6 +1284,7 @@ server.registerTool(
     llm_provider: z.enum(["openai", "anthropic", "google"]).optional().describe("Which provider your LLM_API_KEY belongs to. Only read when the LLM fallback is on. Default: \"openai\"."),
     llm_model: z.string().optional().describe("Model id passed straight through to the provider. Only read when the LLM fallback is on. Default: \"gpt-4o-mini\"."),
     skipCache: z.enum(["false", "true"]).optional().describe("Set to true to ignore cached results and classify from scratch. Default: \"false\"."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
@@ -1270,7 +1300,7 @@ server.registerTool(
       "Give it a company domain. It returns the third party conferences and trade shows that company publicly says it attends, with a year for each where one can be resolved, as one flat row. The search runs against the company's own domain, which is what stops a brand collision returning another company's events. The company's own conference is reported separately and is never mixed into the attendance list. It finds events for roughly 2 companies in 10, and an empty row is an honest empty row rather than a guess: read coverage, fetch_status and queries_failed to tell a company with no published events apart from a search that could not see. Events dated outside the years you ask for are still returned and flagged, so filter on event year rather than assuming the input filtered for you. This is not an events database and not an exhibitor list: it takes a company and reports what that company publishes. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Map Company Event Presence",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1282,6 +1312,7 @@ server.registerTool(
     include_own_events: z.boolean().optional().describe("Reports whether the company runs its own conference as a separate field. It is never mixed into the attendance list. Default: true."),
     max_queries: z.string().optional().describe("Between 1 and 5. Each query costs roughly 0.8 seconds plus a 1.3 second pause. 2 is the measured sweet spot: search engines refuse a third query from the same container almost every time, and the third query added no events the first two did not already find. Sent as a string so it works from Clay. Default: \"2\"."),
     skipCache: z.enum(["false", "true"]).optional().describe("false uses the 21 day result cache. true forces a fresh look. Default: \"false\"."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
@@ -1297,7 +1328,7 @@ server.registerTool(
       "Give it a company domain and it returns the registered legal entity behind it: legal name, company number, jurisdiction, status, entity type, LEI and VAT number, as one flat row with a full audit trail of what was rejected and why. Three registers are queried: UK Companies House, GLEIF and SEC EDGAR. Register search endpoints are fuzzy and always return something, so by default a record is accepted only when the normalized legal names are identical. That is why roughly 6 domains in 10 resolve rather than 10 in 10, and why a null here is a trustworthy answer rather than a gap. Read match_method, match_confidence and rejected_candidates before acting on a match. Setting match_strictness to fuzzy will hand you a confidently wrong company on most domains and should be treated as a research mode, not a default. This is not a company database and not a credit or risk product. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Resolve Legal Entity",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1309,6 +1340,7 @@ server.registerTool(
     match_strictness: z.enum(["exact", "fuzzy"]).optional().describe("exact accepts a register record only when the normalized legal names are equal, which is the default and the recommendation. fuzzy returns the best scoring candidate with a confidence below 100 and a warning in rejected_candidates. Register search is fuzzy and always returns something, so fuzzy mode will hand you a confidently wrong company on most domains. Default: \"exact\"."),
     validate_vat: z.boolean().optional().describe("Runs any VAT number found on the company's own pages through the EU VIES service and returns the name VIES holds for it, as a cross-check against the register name. Default: true."),
     skipCache: z.enum(["false", "true"]).optional().describe("false uses the cache: 90 days for a resolved company, 7 days for a null. true forces a fresh look. Default: \"false\"."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
@@ -1324,7 +1356,7 @@ server.registerTool(
       "Pick a public award register and a time window and it returns the companies that won public work in it, one flat row per winning company rather than one per award, with award count, total value, largest award, awarding body, award date, a deep link to the source record, and a resolved company domain. Five registers are covered: US federal contracts and US federal grants from USASpending, NIH SBIR and STTR from NIH RePORTER, and UK Contracts Finder and UK Find a Tender. This reports awards that have already been made, so it is not a tender feed and will not tell you what is open to bid on. US federal data lags about two days, so a one day window on a US register returns little or nothing. Winners are sorted by total award value and max_entities is the hard cap on billed rows. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Monitor Public Awards",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
@@ -1337,6 +1369,7 @@ server.registerTool(
     exclude_government_recipients: z.boolean().optional().describe("Drops winners that are themselves government, universities, or public authorities. Leave this on for the grant registers or you get state departments of education instead of companies. Default: true."),
     resolve_domains: z.boolean().optional().describe("Looks up each winner's website. Turning it off makes the run roughly 20x faster and returns recipient_domain as null with domain_status not_attempted. Default: true."),
     domain_confidence_floor: z.enum(["strict", "standard", "loose"]).optional().describe("How sure the actor has to be before it gives you a domain. Strict returns fewer domains and almost no wrong ones. Loose returns the most domains and about a third of them are wrong. Default: \"standard\"."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
@@ -1356,7 +1389,7 @@ server.registerTool(
       "Point it at LinkedIn person profiles or company pages and it returns the posts a search engine has indexed for each one, as flat rows: permalink, author, a text excerpt, and the publish date decoded from the post id. No request is sent to LinkedIn and no cookie or account is used. A result counts only when its permalink names the source, so posts are never attributed to the wrong author. Coverage is what the search index holds: posts appear days or weeks after publishing and many never appear. Commenters, reaction counts, comment counts and media are no longer returned (removed 2026-10-12, they came only from LinkedIn pages). Rows carry row_type post or notice; filter on row_type before loading a table. post_id is the activity URN and is stable across runs. Every row carries degraded and degradation_reason. Requires an APIFY_TOKEN and consumes Apify credits. Read only.",
     annotations: {
       title: "Capture LinkedIn Posts and Commenters",
-      readOnlyHint: true,
+      readOnlyHint: false,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: true,
