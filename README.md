@@ -11,6 +11,7 @@ One MCP server that exposes the Mamba Labs GTM Suite. Install a single package a
 - [Prerequisites](#prerequisites)
 - [Example prompts](#example-prompts)
 - [Tools and inputs](#tools-and-inputs)
+- [Pricing](#pricing)
 - [How each call runs](#how-each-call-runs)
 - [Full actor documentation](#full-actor-documentation)
 - [Mamba Labs GTM Suite](#mamba-labs-gtm-suite)
@@ -96,29 +97,61 @@ Get your token at https://console.apify.com/account/integrations, paste it in, a
 
 Each tool maps to one Apify actor. Every input each tool accepts is listed below, generated from the server's own tool list. Where a tool marks nothing required, it still needs one identifier: the tool says which when you call it without one.
 
-- `scan_gtm_hiring_signals` (7 inputs): required `domain`; optional `role_filter`, `ats_slug`, `mode`, `include_role_details`, `previous_gtm_role_count`, `previous_run_date`
-- `detect_gtm_tech_stack` (6 inputs): optional `domain`, `company_domain`, `url`, `crawl_additional_pages`, `skipCache`, `technologies`
-- `aggregate_gtm_signals` (4 inputs): required `company_domain`; optional `include_summary`, `explain_mode`, `sources`
-- `scan_job_board_keywords` (6 inputs): required `company_domain`, `role_categories`; optional `custom_keywords`, `enable_fallback`, `previous_roles_detected`, `previous_run_date`
-- `resolve_linkedin_url` (5 inputs): optional `company_domain`, `company_name`, `includeFirmographics`, `skipCache`, `minConfidenceScore`
-- `score_icp_fit` (43 inputs): required `company_domain`; optional `company_name`, `template`, `scoring_config`, `icp_description`, `llm_api_key`, `llm_provider`, `fetch_signals`, `include_explanation`, `tier_thresholds`, `funded_within_days`, `min_score_to_output`, `previous_score`, `gtm_hiring_signal`, `gtm_role_count`, `uses_hubspot`, `uses_salesforce`, `uses_clay`, `crm_detected`, `seq_tool_detected`, `tech_stack`, `headcount`, `headcount_min`, `headcount_max`, `headcount_in_range`, `employee_band`, `revenue_estimate`, `hq_location`, `founded_year`, `recently_funded`, `last_funding_date`, `latest_funding_date`, `latest_funding_amount`, `funding_stage`, `industry`, `industry_match`, `target_industries`, `social_platforms_found`, `total_followers`, `has_linkedin`, `has_twitter`, `job_count`, `keyword_match_count`
-- `resolve_company_identity` (5 inputs): optional `company_name`, `domain`, `linkedin_url`, `skipCache`, `minLinkedinConfidence`
-- `enrich_company_firmographics` (5 inputs): optional `domain`, `company_name`, `domains`, `batchSize`, `skipCache`
-- `map_company_social_presence` (5 inputs): optional `company_domain`, `company_name`, `platforms`, `includeFollowerCounts`, `skipCache`
-- `get_funding_press_signals` (4 inputs): required `domain`; optional `company_name`, `signal_types`, `lookback_days`
-- `get_company_changes` (6 inputs): required `domain`; optional `company_name`, `previous_snapshot`, `sub_actor_timeout_secs`, `sources`, `min_severity`
-- `detect_ai_tooling` (6 inputs): optional `domain`, `domains`, `check_pricing`, `skipCache`, `request_timeout_ms`, `vendors`
-- `fingerprint_outbound_infrastructure` (9 inputs): optional `domain`, `domains`, `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`, `skipCache`, `max_sending_domain_probes`, `request_timeout_ms`, `dns_timeout_ms`
-- `track_publication_cadence` (8 inputs): optional `domain`, `domains`, `max_pages_to_date`, `domain_time_budget_ms`, `skipCache`, `page_concurrency`, `max_sitemap_fetches`, `request_timeout_ms`
-- `push_leads_to_sequencer` (10 inputs): required `sequencer`, `campaign_id`; optional `api_key`, `leads`, `dataset_id`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`
-- `audit_agent_accessibility` (5 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`, `checks`
-- `classify_contact` (8 inputs): required `job_title`; optional `full_name`, `company_domain`, `verify_position`, `use_llm_fallback`, `llm_provider`, `llm_model`, `skipCache`
-- `map_company_event_presence` (6 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`
-- `resolve_legal_entity` (6 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`
-- `monitor_public_awards` (7 inputs): required `register`; optional `window_days`, `min_award_value`, `max_entities`, `exclude_government_recipients`, `resolve_domains`, `domain_confidence_floor`
+- `scan_gtm_hiring_signals` (8 inputs): required `domain`; optional `role_filter`, `ats_slug`, `mode`, `include_role_details`, `previous_gtm_role_count`, `previous_run_date`, `max_charge_usd`
+- `detect_gtm_tech_stack` (7 inputs): optional `domain`, `company_domain`, `url`, `crawl_additional_pages`, `skipCache`, `technologies`, `max_charge_usd`
+- `aggregate_gtm_signals` (5 inputs): required `company_domain`; optional `include_summary`, `explain_mode`, `sources`, `max_charge_usd`
+- `scan_job_board_keywords` (7 inputs): required `company_domain`, `role_categories`; optional `custom_keywords`, `enable_fallback`, `previous_roles_detected`, `previous_run_date`, `max_charge_usd`
+- `resolve_linkedin_url` (6 inputs): optional `company_domain`, `company_name`, `includeFirmographics`, `skipCache`, `minConfidenceScore`, `max_charge_usd`
+- `score_icp_fit` (44 inputs): required `company_domain`; optional `company_name`, `template`, `scoring_config`, `icp_description`, `llm_api_key`, `llm_provider`, `fetch_signals`, `include_explanation`, `tier_thresholds`, `funded_within_days`, `min_score_to_output`, `previous_score`, `gtm_hiring_signal`, `gtm_role_count`, `uses_hubspot`, `uses_salesforce`, `uses_clay`, `crm_detected`, `seq_tool_detected`, `tech_stack`, `headcount`, `headcount_min`, `headcount_max`, `headcount_in_range`, `employee_band`, `revenue_estimate`, `hq_location`, `founded_year`, `recently_funded`, `last_funding_date`, `latest_funding_date`, `latest_funding_amount`, `funding_stage`, `industry`, `industry_match`, `target_industries`, `social_platforms_found`, `total_followers`, `has_linkedin`, `has_twitter`, `job_count`, `keyword_match_count`, `max_charge_usd`
+- `resolve_company_identity` (6 inputs): optional `company_name`, `domain`, `linkedin_url`, `skipCache`, `minLinkedinConfidence`, `max_charge_usd`
+- `enrich_company_firmographics` (6 inputs): optional `domain`, `company_name`, `domains`, `batchSize`, `skipCache`, `max_charge_usd`
+- `map_company_social_presence` (6 inputs): optional `company_domain`, `company_name`, `platforms`, `includeFollowerCounts`, `skipCache`, `max_charge_usd`
+- `get_funding_press_signals` (5 inputs): required `domain`; optional `company_name`, `signal_types`, `lookback_days`, `max_charge_usd`
+- `get_company_changes` (7 inputs): required `domain`; optional `company_name`, `previous_snapshot`, `sub_actor_timeout_secs`, `sources`, `min_severity`, `max_charge_usd`
+- `detect_ai_tooling` (7 inputs): optional `domain`, `domains`, `check_pricing`, `skipCache`, `request_timeout_ms`, `vendors`, `max_charge_usd`
+- `fingerprint_outbound_infrastructure` (10 inputs): optional `domain`, `domains`, `scan_sending_domains`, `sending_domain_depth`, `check_deliverability`, `skipCache`, `max_sending_domain_probes`, `request_timeout_ms`, `dns_timeout_ms`, `max_charge_usd`
+- `track_publication_cadence` (9 inputs): optional `domain`, `domains`, `max_pages_to_date`, `domain_time_budget_ms`, `skipCache`, `page_concurrency`, `max_sitemap_fetches`, `request_timeout_ms`, `max_charge_usd`
+- `push_leads_to_sequencer` (11 inputs): required `sequencer`, `campaign_id`; optional `api_key`, `leads`, `dataset_id`, `min_icp_score`, `deduplicate`, `dry_run`, `field_mapping`, `custom_variables`, `max_charge_usd`
+- `audit_agent_accessibility` (6 inputs): required `domain`; optional `check_endpoints`, `check_structured_data`, `skipCache`, `checks`, `max_charge_usd`
+- `classify_contact` (9 inputs): required `job_title`; optional `full_name`, `company_domain`, `verify_position`, `use_llm_fallback`, `llm_provider`, `llm_model`, `skipCache`, `max_charge_usd`
+- `map_company_event_presence` (7 inputs): required `domain`; optional `company_name`, `years`, `include_own_events`, `max_queries`, `skipCache`, `max_charge_usd`
+- `resolve_legal_entity` (7 inputs): required `domain`; optional `legal_name_hint`, `jurisdiction_hint`, `match_strictness`, `validate_vat`, `skipCache`, `max_charge_usd`
+- `monitor_public_awards` (8 inputs): required `register`; optional `window_days`, `min_award_value`, `max_entities`, `exclude_government_recipients`, `resolve_domains`, `domain_confidence_floor`, `max_charge_usd`
 - `capture_linkedin_posts_and_commenters` (3 inputs): optional `profile_urls`, `company_urls`, `posted_since`.
 
+Every tool except `capture_linkedin_posts_and_commenters` (whose actor has no spending cap input) also accepts `max_charge_usd`, an optional spending cap in USD for that call: the actor stops before any charge that would take the run past it and keeps every row already charged.
+
 `push_leads_to_sequencer` is the only tool here that writes: it adds leads to your campaign unless `dry_run` is true.
+
+## Pricing
+
+Each tool runs its actor on your own Apify account and is billed there, pay per event. Every run also carries Apify's actor start event at $0.00005 per GB of memory. Prices below are read from each actor's live pricing record on 2026-10-16; the Apify page of each actor carries the current price.
+
+| Tool | Events and price per event (USD) |
+| --- | --- |
+| `scan_gtm_hiring_signals` | `apify-default-dataset-item` $0.05 on the Free plan, down to $0.0425 on higher Apify plans |
+| `detect_gtm_tech_stack` | `apify-default-dataset-item` $0.015 on the Free plan, down to $0.0128 on higher Apify plans |
+| `aggregate_gtm_signals` | `apify-default-dataset-item` $0.055 on the Free plan, down to $0.0385 on higher Apify plans |
+| `scan_job_board_keywords` | `apify-default-dataset-item` $0.05 on the Free plan, down to $0.0425 on higher Apify plans |
+| `resolve_linkedin_url` | `apify-default-dataset-item` $0.006 on the Free plan, down to $0.0051 on higher Apify plans |
+| `score_icp_fit` | `apify-default-dataset-item` $0.05 on the Free plan, down to $0.0425 on higher Apify plans |
+| `resolve_company_identity` | `apify-default-dataset-item` $0.007 on the Free plan, down to $0.00595 on higher Apify plans |
+| `enrich_company_firmographics` | `apify-default-dataset-item` $0.004 on the Free plan, down to $0.0034 on higher Apify plans |
+| `map_company_social_presence` | `apify-default-dataset-item` $0.015 on the Free plan, down to $0.0128 on higher Apify plans |
+| `get_funding_press_signals` | `apify-default-dataset-item` $0.03 on the Free plan, down to $0.0255 on higher Apify plans |
+| `get_company_changes` | `apify-default-dataset-item` $0.01 on the Free plan, down to $0.0085 on higher Apify plans; `change-source-resolved` $0.01 on the Free plan, down to $0.0085 on higher Apify plans |
+| `detect_ai_tooling` | `actor-start` $0.00005; `domain-analyzed` $0.003 on the Free plan, down to $0.00255 on higher Apify plans |
+| `fingerprint_outbound_infrastructure` | `actor-start` $0.00005; `domain-analyzed` $0.004 on the Free plan, down to $0.0034 on higher Apify plans |
+| `track_publication_cadence` | `actor-start` $0.00005; `domain-analyzed` $0.004 on the Free plan, down to $0.0034 on higher Apify plans |
+| `push_leads_to_sequencer` | `lead-pushed` $0.01 on the Free plan, down to $0.0085 on higher Apify plans |
+| `audit_agent_accessibility` | `domain-analyzed` $0.005 on the Free plan, down to $0.00425 on higher Apify plans |
+| `classify_contact` | `contact-classified` $0.003 on the Free plan, down to $0.00255 on higher Apify plans |
+| `map_company_event_presence` | `company-analyzed` $0.005 on the Free plan, down to $0.00425 on higher Apify plans |
+| `resolve_legal_entity` | `domain-resolved` $0.007 on the Free plan, down to $0.00595 on higher Apify plans |
+| `monitor_public_awards` | `award-winner-found` $0.005 on the Free plan, down to $0.00425 on higher Apify plans |
+| `capture_linkedin_posts_and_commenters` | `post-collected` $0.002 on the Free plan, down to $0.0017 on higher Apify plans |
+
+A pricing change takes effect on 2026-10-26 for company-firmographic-enricher, company-identity-resolver, domain-to-linkedin-url-resolver: the charge moves to a `result` event. Check the actor's Apify page after that date.
 
 ## How each call runs
 
@@ -134,7 +167,7 @@ https://apify.com/mambalabs
 
 ## Mamba Labs GTM Suite
 
-This is the umbrella server for the **Mamba Labs GTM Suite**: twenty one account-intelligence tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server. The Mamba Labs fleet has 53 public actors; the brand presence mappers, the influencer suite, Expert Witness Directory, and the other actors outside this list are available as their own servers under [@mambalabsdev on npm](https://www.npmjs.com/org/mambalabsdev).
+This is the umbrella server for the **Mamba Labs GTM Suite**: twenty one account-intelligence tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server. The Mamba Labs fleet has 57 public actors; the brand presence mappers, the influencer suite, Expert Witness Directory, and the other actors outside this list are available as their own servers under [@mambalabsdev on npm](https://www.npmjs.com/org/mambalabsdev).
 
 | Tool | Actor | Immutable Actor ID |
 |---|---|---|
