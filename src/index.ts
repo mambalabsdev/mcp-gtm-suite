@@ -879,7 +879,7 @@ server.registerTool(
         .number()
         .int()
         .optional()
-        .describe("Per-child run timeout in seconds. Children run in parallel, so total wall time is about the slowest child. Default: 90."),
+        .describe("Per-child run timeout in seconds. Children run in parallel, so total wall time is about the slowest child. Default: 300."),
       sources: z
         .array(z.enum(["hiring", "tech_stack", "firmographic", "funding", "social"]))
         .optional()
@@ -1334,6 +1334,8 @@ server.registerTool(
       openWorldHint: true,
     },
     inputSchema: {
+    sec_requester_name: z.string().min(1).max(100).describe("Required. Your own name or your company's name. The SEC requires every automated request to EDGAR to identify the requester by name and email, and the actor sends yours, never a default."),
+    sec_requester_email: z.string().email().describe("Required. Your own working email address. Sent to the SEC with your name in the User-Agent of each EDGAR request, in the form the SEC asks for. Nothing else uses it."),
     domain: z.string().describe("A single company domain, for example monzo.com. Protocol and path are stripped."),
     legal_name_hint: z.string().optional().describe("Skips the domain lookup and goes straight to the registers with this name. Use it when you already have the legal name and just want the register record."),
     jurisdiction_hint: z.string().optional().describe("ISO-2 country code, for example GB or US. Narrows which registers are queried and cuts latency. Leave empty to query every register."),
@@ -1398,6 +1400,7 @@ server.registerTool(
     profile_urls: z.array(z.string()).optional().describe("LinkedIn person profile URLs, for example https://www.linkedin.com/in/williamhgates. Country subdomains such as uk.linkedin.com are fine. Supply this, company_urls, or both."),
     company_urls: z.array(z.string()).optional().describe("LinkedIn company page URLs, for example https://www.linkedin.com/company/microsoft. Supply this, profile_urls, or both."),
     posted_since: z.string().optional().describe("ISO date or timestamp, for example 2026-08-01. Posts published before this are skipped BEFORE anything is charged. Leave empty to take everything the index holds."),
+      max_charge_usd: MAX_CHARGE_USD,
     },
   },
   async (args) =>
