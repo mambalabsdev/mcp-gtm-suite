@@ -169,7 +169,7 @@ https://apify.com/mambalabs
 
 ## Mamba Labs GTM Suite
 
-This is the umbrella server for the **Mamba Labs GTM Suite**: twenty one account-intelligence tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server. The Mamba Labs fleet has 70 public actors; the brand presence mappers, the influencer suite, Expert Witness Directory, and the other actors outside this list are available as their own servers under [@mambalabsdev on npm](https://www.npmjs.com/org/mambalabsdev).
+This is the umbrella server for the **Mamba Labs GTM Suite**: twenty one account-intelligence tools for go-to-market signal intelligence, each backed by a dedicated Apify actor and also published as its own standalone MCP server. The Mamba Labs fleet has 75 public actors; the brand presence mappers, the influencer suite, Expert Witness Directory, and the other actors outside this list are available as their own servers under [@mambalabsdev on npm](https://www.npmjs.com/org/mambalabsdev).
 
 | Tool | Actor | Immutable Actor ID |
 |---|---|---|
